@@ -1,0 +1,10 @@
+numpy==1.21.0
+numba
+aif360
+pandas
+sklearn
+tf-nightly-cpu
+fairlearn
+jupyterlab
+notebook
+ipywidgets
