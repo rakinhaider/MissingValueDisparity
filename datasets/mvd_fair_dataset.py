@@ -16,6 +16,7 @@ class MVDFairDataset(FairDataset):
                  group_shift=2, dist=None, metadata=default_mappings,
                  alpha=0.5, beta=1, **kwargs):
 
+        print(kwargs)
         np.random.seed(kwargs.get('random_seed', 0))
 
         self.complete_df = self.generate_synthetic(
@@ -31,19 +32,20 @@ class MVDFairDataset(FairDataset):
                     protected_attribute_names=protected_attribute_names)
         if kwargs.get('imputer', None):
             self.imputer = kwargs['imputer']
-            non_feature_names = protected_attribute_names+[label_name]
+            non_feature_names = ([] if kwargs.get('keep_im_prot', False) else protected_attribute_names)+[label_name]
             feature_names = [i for i in incomplete_df.columns
                              if i not in non_feature_names]
-            print(incomplete_df)
-            print(feature_names)
-            print(incomplete_df[feature_names])
             imputed_df = pd.DataFrame(
                 self.imputer.transform(incomplete_df[feature_names]),
                 columns=feature_names)
             imputed_df[non_feature_names] = incomplete_df[non_feature_names]
+        elif 'method' in kwargs and kwargs['method'] == 'baseline':
+            imputed_df = self.complete_df
+            self.imputer = None
         else:
             imputed_df, self.imputer = impute(
-                incomplete_df, kwargs.get('method', 'drop'))
+                incomplete_df, kwargs.get('method', 'drop'),
+                keep_im_prot=kwargs.get('keep_im_prot', False))
 
         super(MVDFairDataset, self).__init__(
             df=imputed_df, label_name=label_name,

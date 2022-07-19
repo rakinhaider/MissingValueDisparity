@@ -22,6 +22,7 @@ def get_parser():
     parser.add_argument('--mu_p_plus', default=13, type=int)
     parser.add_argument('--mu_u_plus', default=10, type=int)
     parser.add_argument('--delta', default=10, type=int)
+    parser.add_argument('--alpha', default=0.5, type=float)
     parser.add_argument('--beta', default=1, type=int)
     parser.add_argument('--n-samples', default=10000, type=int)
     parser.add_argument('--n-feature', default=2, type=int)
@@ -33,6 +34,7 @@ def get_parser():
                         choices=['nb', 'lr', 'svm', 'dt', 'pr'],
                         help='Type of estimator')
     parser.add_argument('--reduce', default=False, action='store_true')
+    parser.add_argument('--print-header', default=False, action='store_true')
     return parser
 
 
@@ -86,12 +88,12 @@ def get_dataset(dataset_name):
 
 def print_table_row(is_header=False, var_value=None, p_perf=None,
                     u_perf=None, m_perf=None, variable="alpha"):
-    cols = [variable, "AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
+    cols = [str(variable), "AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
     if is_header:
         print("\t & \t".join(cols))
     else:
-        if isinstance(var_value, str):
-            row = [var_value]
+        if isinstance(var_value, str) or isinstance(var_value, tuple):
+            row = [str(var_value)]
         else:
             row = ['{:.2f}'.format(var_value)]
         row += ["{:04.1f}".format(d) for d in [p_perf['AC_p'], u_perf['AC_u']]]

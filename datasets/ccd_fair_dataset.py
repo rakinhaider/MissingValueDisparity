@@ -16,7 +16,6 @@ class CCDFairDataset(MVDFairDataset):
         """
         self.priv_cc_prob = priv_ic_prob
         self.unpriv_cc_prob = unpriv_ic_prob
-        print(kwargs)
         super(CCDFairDataset, self).__init__(**kwargs)
 
     def generate_missing_matrix(self, **kwargs):

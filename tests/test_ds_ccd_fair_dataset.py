@@ -8,7 +8,7 @@ from aif360.metrics.binary_label_dataset_metric import BinaryLabelDatasetMetric
 class TestDSCCDFairDataset(TestCase):
     def test_ds_ccd_fbd(self):
         fbd = DSCCDFairDataset(n_samples=5, n_features=2, random_seed=43,
-                               method='simple_imputer.mean')
+                               method='simple_imputer.mean', alpha=0.4)
         metric = BinaryLabelDatasetMetric(fbd,
               privileged_groups=fbd.privileged_groups,
               unprivileged_groups=fbd.unprivileged_groups)
@@ -16,7 +16,7 @@ class TestDSCCDFairDataset(TestCase):
 
     def test_get_group_configs(self):
         fbd = DSCCDFairDataset(n_samples=5, n_redline=1, n_features=2,
-                               random_seed=43,
+                               random_seed=43, alpha=0.4,
                                dist={'mus': {1: np.array([10, 15]),
                                              0: np.array([5, 10])},
                                      'sigmas': [3, 3]})
@@ -26,4 +26,5 @@ class TestDSCCDFairDataset(TestCase):
                                      ([10, 12.5], [3, 3], 1, 1)]
 
     def test_generate_synthetic(self):
-        fbd = DSCCDFairDataset(n_samples=5, n_features=2, random_seed=43)
+        fbd = DSCCDFairDataset(n_samples=5, n_features=2, random_seed=43,
+                               alpha=0.4,)

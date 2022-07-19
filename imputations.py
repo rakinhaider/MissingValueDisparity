@@ -7,12 +7,16 @@ from sklearn.ensemble import RandomForestRegressor
 
 
 def impute(df, method='drop', label_names=['label'],
-           protected_attribute_names=['sex']):
+           protected_attribute_names=['sex'], keep_im_prot=False):
 
     s = df[protected_attribute_names]
     y = df[label_names]
+    if not keep_im_prot:
+        non_feature_names = protected_attribute_names + label_names
+    else:
+        non_feature_names = label_names
     feature_names = [i for i in df.columns
-                     if i not in protected_attribute_names + label_names]
+                     if i not in non_feature_names]
     features = df[feature_names]
     if method == 'drop':
         # TODO: No longer balanced. Handle in later version.
@@ -24,11 +28,12 @@ def impute(df, method='drop', label_names=['label'],
         elif method == 'iterative_imputer.mice':
             lr = LinearRegression()
             imputer = IterativeImputer(estimator=lr, max_iter=5,
-                                       imputation_order='roman', random_state=0)
+                                       imputation_order='descending', random_state=0)
         elif method == 'iterative_imputer.missForest':
             rf = RandomForestRegressor()
             imputer = IterativeImputer(estimator=rf, max_iter=5,
-                                       imputation_order='roman', random_state=0)
+                                       imputation_order='descending',
+                                       random_state=0)
         elif method == 'knn_imputer':
             imputer = KNNImputer(n_neighbors=2, copy=True)
         else:
@@ -37,6 +42,8 @@ def impute(df, method='drop', label_names=['label'],
                           columns=feature_names)
         df[protected_attribute_names] = s
         df[label_names] = y
-        df = df[feature_names+protected_attribute_names+label_names]
-
+        if keep_im_prot:
+            df = df[feature_names + label_names]
+        else:
+            df = df[feature_names + protected_attribute_names + label_names]
     return df, imputer
