@@ -1,10 +1,6 @@
-numpy==1.21.0
-numba
-aif360
+numpy
 pandas
-sklearn
-tf-nightly-cpu
+scipy
+aif360
+tensorflow
 fairlearn
-jupyterlab
-notebook
-ipywidgets

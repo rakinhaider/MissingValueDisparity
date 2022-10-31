@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import logging
 
 from aif360.metrics import (
     BinaryLabelDatasetMetric,
@@ -38,19 +39,22 @@ class FairDataset(BinaryLabelDataset):
             metadata=kwargs.get('metadata', default_mappings))
         # TODO: Add assert of fairness
 
-    def generate_synthetic(self, **kwargs):
+    def generate_synthetic(self, dist, **kwargs):
         # TODO: Copy the previous code here.
+        if dist is None:
+            dist = self._get_default_dist()
         n_unprivileged = kwargs['n_samples']
-        n_features = kwargs['n_features']
+        n_features = len(dist['mu'][0, 0])
+        logging.info('n_features', n_features)
         alpha = kwargs['alpha']
         beta = kwargs['beta']
         _validate_alpha_beta(alpha, beta, n_unprivileged)
-        if kwargs.get('group_configs', None):
-            self.group_configs = kwargs['group_configs']
-        elif kwargs.get('dist', None):
-            self.group_configs = self.get_group_configs(**kwargs)
-        else:
-            self.group_configs = self._get_default_configs(**kwargs)
+        self.group_configs = []
+        for s, y in [(0, 0), (0, 1), (1, 0), (1, 1)]:
+            mus = dist['mu'][s, y]
+            sigmas = dist['sigma'][s, y]
+            self.group_configs.append((mus, sigmas, s, y))
+
         protected_attribute_names = kwargs.get('protected_attribute_names',
                                                ['sex'])
         label_names = [kwargs.get('label_name', 'label')]
@@ -70,15 +74,14 @@ class FairDataset(BinaryLabelDataset):
 
         return df
 
-    def get_group_configs(self, **kwargs):
-        pass
+    def get_group_configs(self):
+        return self.group_configs
 
     @staticmethod
-    def _get_default_configs(**kwargs):
-        mus_ = np.zeros(kwargs['n_features']) + 10
-        sigmas_ = np.zeros((kwargs['n_features'])) + 3
-        return [(mus_, sigmas_, 1, 1), (mus_ - 5, sigmas_, 1, 0),
-                (mus_, sigmas_, 0, 1), (mus_ - 5, sigmas_, 0, 0),]
+    def _get_default_dist():
+        mus_ = np.zeros((2, 2, 2)) + 10
+        sigmas_ = np.zeros((2, 2, 2)) + 3
+        return {'mu': mus_, 'sigma': sigmas_}
 
     def get_xy(self, keep_protected=False):
         x, _ = self.convert_to_dataframe()

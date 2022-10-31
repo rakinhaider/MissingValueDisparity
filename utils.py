@@ -250,3 +250,17 @@ def get_positive_rate(cmetrics, privileged=None, positive=True):
         return cmetrics.true_positive_rate(privileged)
     else:
         return cmetrics.false_positive_rate(privileged)
+
+
+def get_c123(sigma_1, sigma_2, delta):
+    sigma_1_theta_sqr = sigma_1 ** 2 + delta ** 2 / 16
+    sigma_2_theta_sqr = sigma_2 ** 2 + delta ** 2 / 16
+
+    denominator = sigma_1_theta_sqr ** 2 * sigma_2 ** 2
+    denominator += sigma_2_theta_sqr ** 2 * sigma_1 ** 2
+    denominator = 2 * np.sqrt(2) * delta * np.sqrt(denominator)
+    c1 = delta ** 2 * sigma_2_theta_sqr / denominator
+    c3 = delta ** 2 * sigma_1_theta_sqr / denominator
+    c2 = 4 * sigma_1_theta_sqr * sigma_2_theta_sqr / denominator
+
+    return c1, c2, c3

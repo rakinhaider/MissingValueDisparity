@@ -7,11 +7,13 @@ from unittest import TestCase
 
 class TestMVDFairDataset(TestCase):
     def test_mvd_fair_dataset(self):
-        dists = [None, {'mus': {1: np.array([10, 15]),
-                                0: np.array([0, 5])},
-                        'sigmas': [3, 3]}]
+        dists = [None, {'mu': np.array(
+            [[[0, 2], [10, 12]],
+             [[1, 3], [11, 13]]]),
+            'sigma': np.ones((2, 2, 2)) * 3
+        }]
         for d in dists:
-            fbd = MVDFairDataset(5, 2, dist=d, alpha=0.4, beta=1)
+            fbd = MVDFairDataset(5, dist=d, alpha=0.4, beta=1)
             metric = BinaryLabelDatasetMetric(fbd,
                 privileged_groups=fbd.privileged_groups,
                 unprivileged_groups=fbd.unprivileged_groups)
@@ -21,10 +23,11 @@ class TestMVDFairDataset(TestCase):
             assert fbd.unfavorable_label == 0.0
 
     def test_data_distributions(self):
-        dist = {'mus': {1: np.array([10, 15]),
-                        0: np.array([0, 5])},
-                'sigmas': [3, 3]}
-        fbd = MVDFairDataset(1000000, 2, dist=dist)
+        dist = {'mu': np.array(
+            [[[0, 2], [10, 12]],
+             [[1, 3], [11, 13]]]),
+            'sigma': np.ones((2, 2, 2)) * 3}
+        fbd = MVDFairDataset(1000000, dist=dist)
         df = fbd.complete_df
         grouped = df.groupby(['sex', 'label'])
         means = {(i[2], i[3]): i[0] for i in fbd.group_configs}

@@ -21,21 +21,46 @@ class CCDFairDataset(MVDFairDataset):
     def generate_missing_matrix(self, **kwargs):
         n_samples = self.complete_df.shape[0]
         n_features = self.complete_df.shape[1] - 2
-        # missing_col = np.random.randint(0, n_features)
+        label_name = kwargs.get('label_name', 'label')
         missing_col = kwargs.get('n_redline', 1)
         protected_attribute_names = kwargs. \
             get('protected_attribute_names', ['sex'])
-        s_name = protected_attribute_names[0]
+        selector = [protected_attribute_names[0]] + [label_name]
         r = sparse.csr_matrix(np.zeros((n_samples, n_features)))
-        for grp, count in self.complete_df[s_name].value_counts().iteritems():
-            if grp == 1:
+        for grp, count in self.complete_df[selector].value_counts().iteritems():
+            if grp[0] == 1:
                 n_incomplete = int(count * self.priv_cc_prob)
             else:
                 n_incomplete = int(count * self.unpriv_cc_prob)
-
-            indices = self.complete_df[self.complete_df[s_name] == grp].index
+            selection = (self.complete_df[selector] == grp)
+            indices = selection[selection.all(axis=1)].index
             incomplete_cases = np.random.choice(
                 list(indices), size=n_incomplete, replace=False)
             r[incomplete_cases, missing_col] = 1
 
         return r
+
+    def get_detailed_dist(self, dist, **kwargs):
+        if dist is None:
+            return None
+        classes = kwargs['classes']
+        sensitive_groups = kwargs['sensitive_groups']
+        n_class = len(classes)
+        n_group = len(sensitive_groups)
+        n_features = len(dist['mus'][1])
+        formatted_mus = [[None for _ in range(n_class)]for _ in range(n_group)]
+        for sensitive_group in sensitive_groups:
+            for cls in classes:
+                if sensitive_group == kwargs['privileged_group']:
+                    s = 1
+                else:
+                    s = 0
+                cur_mus = [dist['mus'][cls][s] for _ in range(n_features)]
+                formatted_mus[s][cls] = cur_mus
+        formatted_mus = np.array(formatted_mus)
+        formatted_sigmas = np.zeros((n_group, n_class, n_features))
+        # TODO: Fix for different class-wise sigmas
+        for i in range(n_group):
+            formatted_sigmas[i, :, :] += dist['sigmas'][i]
+        formatted_dist = {'mu': formatted_mus, 'sigma': formatted_sigmas}
+        return formatted_dist
