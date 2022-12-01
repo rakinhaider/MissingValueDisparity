@@ -8,17 +8,25 @@ from sklearn.ensemble import RandomForestRegressor
 
 
 def impute(df, method='drop', label_names=['label'],
-           protected_attribute_names=['sex'], keep_im_prot=False):
+           protected_attribute_names=['sex'], keep_im_prot=False, keep_y=False):
 
+    feature_names_orig = df.columns
     s = df[protected_attribute_names]
     y = df[label_names]
-    if keep_im_prot or method == "group_imputer":
-        non_feature_names = label_names
+    if keep_y:
+        non_feature_names = []
     else:
-        non_feature_names = protected_attribute_names + label_names
+        non_feature_names = label_names.copy()
+
+    if not keep_im_prot:
+        non_feature_names += protected_attribute_names
+
     feature_names = [i for i in df.columns
                      if i not in non_feature_names]
     features = df[feature_names]
+
+    # print(feature_names)
+    # print(features)
     if method == 'drop':
         # TODO: No longer balanced. Handle in later version.
         df.dropna(inplace=True)
@@ -36,7 +44,7 @@ def impute(df, method='drop', label_names=['label'],
                                        imputation_order='descending',
                                        random_state=0)
         elif method == 'knn_imputer':
-            imputer = KNNImputer(n_neighbors=2, copy=True)
+            imputer = KNNImputer(n_neighbors=1, copy=True)
         elif method == 'group_imputer':
             imputer = GroupImputer(group_cols=protected_attribute_names,
                                    target=feature_names,
@@ -45,10 +53,11 @@ def impute(df, method='drop', label_names=['label'],
             raise ValueError("Imputation mechanism not supported.")
         df = pd.DataFrame(imputer.fit_transform(features),
                           columns=feature_names)
-        df[protected_attribute_names] = s
-        df[label_names] = y
-        if keep_im_prot or method == "group_imputer":
-            df = df[feature_names + label_names]
-        else:
-            df = df[feature_names + protected_attribute_names + label_names]
+
+        if not keep_im_prot:
+            df[protected_attribute_names] = s.values
+        if not keep_y:
+            df[label_names] = y.values
+
+    df = df[feature_names_orig]
     return df, imputer

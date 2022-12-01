@@ -21,6 +21,7 @@ class TestMVDFairDataset(TestCase):
             assert metric.disparate_impact() == 1.0
             assert fbd.favorable_label == 1.0
             assert fbd.unfavorable_label == 0.0
+            assert all(fbd.complete_df == fbd.imputed_df)
 
     def test_data_distributions(self):
         dist = {'mu': np.array(
@@ -65,6 +66,7 @@ class TestMVDFairDataset(TestCase):
                         0: np.array([0, 5])},
                 'sigmas': [3, 3]}
         fbd = MVDFairDataset(5, 2, dist=dist, alpha=0.4)
+        print(fbd.group_configs)
         res = [(np.array([-2,  3]), [3, 3], 0, 0),
                (np.array([0, 5]), [3, 3], 1, 0),
                (np.array([8, 13]), [3, 3], 0, 1),

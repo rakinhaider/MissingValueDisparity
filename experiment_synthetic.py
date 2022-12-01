@@ -1,4 +1,5 @@
 import os
+import sys
 import warnings
 # Suppresing tensorflow warning
 warnings.simplefilter(action='ignore')
@@ -9,15 +10,22 @@ from utils import *
 if __name__ == "__main__":
     parser = get_parser()
     parser.add_argument('--distype', '-dt', default='ds_ccd',
-                        choices=['ds_ccd', 'ccd'], help='Type of disparity')
+                        choices=['ds_ccd', 'ccd', 'corr'],
+                        help='Type of disparity')
+    parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
+    parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
+    parser.add_argument('--group-shift', '-gs', default=0, type=int)
     parser.add_argument('--keep-im-prot', '-kip', default=False,
                         action='store_true',
                         help='Keep protected attribute in imputation')
+    parser.add_argument('--keep-y', '-ky', default=False, action='store_true')
     parser.add_argument('--method', default='simple_imputer.mean',
                         choices=['baseline', 'drop', 'simple_imputer.mean',
                                  'iterative_imputer.mice',
                                  'iterative_imputer.missForest', 'knn_imputer',
                                  'group_imputer'])
+    parser.add_argument('--test-method', '-tm', default='train',
+                        choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')
     args = parser.parse_args()
 
@@ -26,9 +34,20 @@ if __name__ == "__main__":
 
     # Class shift is 10
     class_shift = args.delta
-    dist = {'mus': {1: np.array([10, 10]),
-                    0: np.array([10 - class_shift, 10 - class_shift])},
-            'sigmas': [3, 3]}
+    if args.distype == 'corr':
+        group_shift = args.group_shift
+        dist = {
+            'mus': {'x1': {
+                0: [0, 0 + group_shift],
+                1: [0 + class_shift, 0 + group_shift + class_shift]},
+                'z': [0, 2]},
+            'sigmas': {'x1': {0: [5, 5], 1: [5, 5]}, 'z': [1, 1]},
+        }
+        # print(dist)
+    else:
+        dist = {'mus': {1: np.array([10, 10]),
+                        0: np.array([10 - class_shift, 10 - class_shift])},
+                'sigmas': [3, 3]}
     alpha = args.alpha
     method = args.method
     if method == "group_imputer":
@@ -38,39 +57,36 @@ if __name__ == "__main__":
 
     kwargs = {
         'protected_attribute_names': ['sex'], 'privileged_group': 'Male',
-        'favorable_class': 1, 'classes': [0, 1],
+        'favorable_label': 1, 'classes': [0, 1],
         'sensitive_groups': ['Female', 'Male'], 'group_shift': 2,
         'beta': 1, 'dist': dist, 'keep_im_prot': keep_prot,
         'alpha': alpha, 'method': method, 'verbose': False,
-        'priv_ic_prob': 0.1, 'unpriv_ic_prob': 0.4
+        'priv_ic_prob': args.priv_ic_prob, 'unpriv_ic_prob': args.unpriv_ic_prob
     }
 
     estimator = get_estimator(args.estimator, args.reduce)
     keep_prot = args.reduce or (args.estimator == 'pr')
     n_samples = args.n_samples
     n_feature = args.n_feature
+    test_method = None if args.test_method == 'none' else args.test_method
 
     variable = ('alpha', 'method')
     if args.print_header or args.header_only:
-        print_table_row(is_header=True, variable=variable)
+        print(get_table_row(is_header=True, variable=variable))
         if args.header_only:
             exit()
     # TODO: ############ Results not matching with notebooks ##############
-    train_fd, test_fd = get_datasets(
+    train_fd, test_fd = get_synthetic_train_test_split(
         train_random_state=47, test_random_state=41, type=args.distype,
-        n_samples=n_samples, n_features=n_feature, **kwargs)
-    pmod, pmod_results = get_groupwise_performance(train_fd, test_fd,
-                                                   estimator,
-                                                   privileged=True,
-                                                   pos_rate=False)
-    umod, umod_results = get_groupwise_performance(train_fd, test_fd,
-                                                   estimator,
-                                                   privileged=False,
-                                                   pos_rate=False)
-    mod, mod_results = get_groupwise_performance(train_fd, test_fd,
-                                                 estimator,
-                                                 privileged=None,
-                                                 pos_rate=False)
+        n_samples=n_samples, n_features=n_feature,
+        test_method=test_method, **kwargs)
+
+    pmod, pmod_results = get_groupwise_performance(
+        train_fd, test_fd, estimator, privileged=True, pos_rate=False)
+    umod, umod_results = get_groupwise_performance(
+        train_fd, test_fd, estimator, privileged=False, pos_rate=False)
+    mod, mod_results = get_groupwise_performance(
+        train_fd, test_fd, estimator, privileged=None, pos_rate=False)
 
     p_perf = get_model_performances(pmod, test_fd,
                                     get_predictions, keep_prot=keep_prot)
@@ -78,6 +94,8 @@ if __name__ == "__main__":
                                     get_predictions, keep_prot=keep_prot)
     m_perf = get_model_performances(mod, test_fd,
                                     get_predictions, keep_prot=keep_prot)
-    print_table_row(is_header=False, var_value=(alpha, method),
-                    p_perf=p_perf, u_perf=u_perf, m_perf=m_perf,
-                    variable=variable)
+    row = get_table_row(
+        is_header=False, var_value=(alpha, method), p_perf=p_perf,
+        u_perf=u_perf, m_perf=m_perf, variable=variable)
+    print(row)
+    sys.stdout.flush()

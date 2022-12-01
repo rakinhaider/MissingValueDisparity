@@ -1,17 +1,18 @@
+import logging
 import argparse
 import numpy as np
-from copy import deepcopy
+import pandas as pd
+
 from datasets.dataset_factory import DatasetFactory
 from aif360.algorithms.preprocessing.optim_preproc_helpers.\
     data_preproc_functions import \
     load_preproc_data_compas
 from aif360.datasets import GermanDataset, BankDataset
 from aif360.metrics import ClassificationMetric
-
-from sklearn.linear_model import LogisticRegression
-from sklearn.naive_bayes import GaussianNB
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB, CategoricalNB
 from fairml import ExponentiatedGradientReduction, PrejudiceRemover
 
 
@@ -44,6 +45,8 @@ def get_estimator(estimator, reduce):
 
     if estimator == 'nb':
         return GaussianNB
+    if estimator == 'cat_nb':
+        return CategoricalNB
     elif estimator == 'lr':
         return LogisticRegression
     elif estimator == 'svm':
@@ -56,9 +59,11 @@ def get_estimator(estimator, reduce):
         return PrejudiceRemover
 
 
-def get_dataset(dataset_name):
+def get_standard_dataset(dataset_name):
     if dataset_name == 'compas':
         dataset = load_preproc_data_compas(protected_attributes=['race'])
+        dataset.privileged_groups = [{'race': 1}]
+        dataset.unprivileged_groups = [{'race': 0}]
     elif dataset_name == 'german':
         dataset = GermanDataset(
             # this dataset also contains protected
@@ -70,45 +75,103 @@ def get_dataset(dataset_name):
             # ignore sex-related attributes
             features_to_drop=['personal_status', 'sex'],
         )
+        dataset.privileged_groups = [{'age': 1}]
+        dataset.unprivileged_groups = [{'age': 0}]
     elif dataset_name == 'bank':
         dataset = BankDataset(
             # this dataset also contains protected
             protected_attribute_names=['age'],
             privileged_classes=[lambda x: x >= 25],  # age >=25 is considered privileged
         )
-        dataset.metadata['protected_attribute_maps'] = [{1.0: 'yes', 0.0: 'no'}]
-        temp = dataset.favorable_label
-        dataset.favorable_label = dataset.unfavorable_label
-        dataset.unfavorable_label = temp
+        dataset.privileged_groups = [{'age': 1}]
+        dataset.unprivileged_groups = [{'age': 0}]
     else:
         raise ValueError('Dataset name must be one of '
                          'compas, german, bank')
     return dataset
 
 
-def print_table_row(is_header=False, var_value=None, p_perf=None,
-                    u_perf=None, m_perf=None, variable="alpha"):
-    cols = [str(variable), "AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
-    if is_header:
-        print("\t & \t".join(cols))
+def get_table_row(is_header=False, var_value=[], p_perf=None,
+                  u_perf=None, m_perf=None, variable="alpha"):
+    if isinstance(variable, tuple):
+        variable = [str(v) for v in variable]
+        row = [str(val) for val in var_value]
     else:
-        if isinstance(var_value, str) or isinstance(var_value, tuple):
-            row = [str(var_value)]
-        else:
-            row = ['{:.2f}'.format(var_value)]
+        variable = [str(variable)]
+        row = [str(var_value)]
+    cols = variable + ["AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
+    if is_header:
+        start = len(variable)
+        cols[start:] = ["${:s}$".format(c) for c in cols[start:]]
+        return "\t & \t".join(cols) + '\\\\'
+    else:
         row += ["{:04.1f}".format(d) for d in [p_perf['AC_p'], u_perf['AC_u']]]
-        row += ["{:04.1f}".format(m_perf[c]) for c in cols[3:]]
-        print("\t & \t".join(row))
+        row += ["{:04.1f}".format(m_perf[c]) for c in cols[len(variable)+2:]]
+        return "\t & \t".join(row) + '\\\\'
 
 
-def get_datasets(type='ccd', train_random_state=47, test_random_state=23,
-                 **kwargs):
+def get_synthetic_train_test_split(type='ccd',
+        train_random_state=47, test_random_state=23,
+        test_method='train',
+        **kwargs):
     factory = DatasetFactory()
     train_fd = factory.get_dataset(
         type=type, random_seed=train_random_state, **kwargs)
-    test_fd = factory.get_dataset(type=type, random_seed=test_random_state,
-                                  imputer=train_fd.imputer, **kwargs)
+    test_kwargs = kwargs.copy()
+    if test_method == 'train':
+        test_fd = factory.get_dataset(type=type, random_seed=test_random_state,
+                                      imputer=train_fd.imputer, **test_kwargs)
+    else:
+        if test_method is None:
+            # print(test_kwargs['method'])
+            test_kwargs['method'] = 'baseline'
+        else:
+            # NOTE: In case we want different train test imputations. Not
+            # logical though.
+            test_kwargs['method'] = test_method
+        test_fd = factory.get_dataset(type=type, random_seed=test_random_state,
+                                      **test_kwargs)
+
     return train_fd, test_fd
+
+
+def filter(struct_data, columns, values):
+    df, _ = struct_data.convert_to_dataframe()
+    for i, column in enumerate(columns):
+        selection = None
+        for val in values[i]:
+            if selection:
+                selection = selection & (df[column] == val)
+            else:
+                selection = df[column] == val
+
+        df = df[selection]
+
+    indices = [struct_data.instance_names.index(i) for i in df.index]
+    return struct_data.subset(indices)
+
+
+def get_samples_by_group(struct_dataset, privileged):
+    if privileged is None:
+        return struct_dataset
+    if privileged:
+        values = struct_dataset.privileged_protected_attributes
+    else:
+        values = struct_dataset.unprivileged_protected_attributes
+    return filter(
+        struct_dataset, struct_dataset.protected_attribute_names, values)
+
+
+def get_xy(data, keep_protected=False):
+    x, _ = data.convert_to_dataframe()
+    drop_fields = data.label_names.copy()
+    if not keep_protected:
+        drop_fields += data.protected_attribute_names
+
+    x = x.drop(columns=drop_fields)
+
+    y = data.labels.ravel()
+    return x, y
 
 
 def get_groupwise_performance(train_fd, test_fd, estimator,
@@ -118,11 +181,7 @@ def get_groupwise_performance(train_fd, test_fd, estimator,
                               privileged_group=None,
                               unprivileged_group=None):
 
-    if privileged:
-        train_fd = train_fd.get_privileged_group()
-
-    elif privileged == False:
-        train_fd = train_fd.get_unprivileged_group()
+    train_fd = get_samples_by_group(train_fd, privileged)
 
     if not params:
         params = get_model_params(estimator, train_fd)
@@ -197,16 +256,16 @@ def get_model_performances(model, test_fd, pred_func,
 
 
 def get_predictions(model, test_fd, keep_prot=False):
-    test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=keep_prot)
+    test_fd_x, test_fd_y = get_xy(test_fd, keep_protected=keep_prot)
     return model.predict(test_fd_x)
 
 
 def train_model(model_type, data, params, keep_prot=False):
-    x, y = data.get_xy(keep_protected=keep_prot)
+    x, y = get_xy(data, keep_protected=keep_prot)
 
     model = model_type(**params)
     model = model.fit(x, y)
-
+    # logging.info(model.__dict__)
     return model
 
 
@@ -217,7 +276,7 @@ def get_classifier_metrics(clf, data,
     privileged_groups = data.privileged_groups
 
     data_pred = data.copy()
-    data_x, data_y = data.get_xy(keep_protected=keep_prot)
+    data_x, data_y = get_xy(data, keep_protected=keep_prot)
     data_pred.labels = clf.predict(data_x)
     metrics = ClassificationMetric(data,
                                    data_pred,

@@ -26,11 +26,8 @@ class CorrelatedCCDFairDataset(CCDFairDataset):
     def get_detailed_dist(self, dist, **kwargs):
         """
         Format of dist
-        dist = {'mus':{'x1': {0: [0, 0], 1:{10, 10},
-                    'z': [0, 2]}
-            },
-            'sigmas': {'x1':{0: [3, 3], 1:{3, 3},
-                'z': [0, 1]}
+        dist = {'mus':{'x1': {0: [0, 0], 1:[10, 10]}, 'z': [0, 2]},
+               'sigmas': {'x1':{0: [3, 3], 1:[3, 3]}, 'z': [0, 1]}
         }
         Linear combination:
             r'x_2 = x_1 + 2 z'

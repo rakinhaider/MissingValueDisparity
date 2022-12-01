@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import numpy as np
 from scipy import sparse
@@ -14,8 +15,8 @@ class CCDFairDataset(MVDFairDataset):
         :param unpriv_ic_prob: rate of incomplete cases in unprivileged group
         :param kwargs: MVDFairDataset arguments.
         """
-        self.priv_cc_prob = priv_ic_prob
-        self.unpriv_cc_prob = unpriv_ic_prob
+        self.priv_ic_prob = priv_ic_prob
+        self.unpriv_ic_prob = unpriv_ic_prob
         super(CCDFairDataset, self).__init__(**kwargs)
 
     def generate_missing_matrix(self, **kwargs):
@@ -29,9 +30,9 @@ class CCDFairDataset(MVDFairDataset):
         r = sparse.csr_matrix(np.zeros((n_samples, n_features)))
         for grp, count in self.complete_df[selector].value_counts().iteritems():
             if grp[0] == 1:
-                n_incomplete = int(count * self.priv_cc_prob)
+                n_incomplete = int(count * self.priv_ic_prob)
             else:
-                n_incomplete = int(count * self.unpriv_cc_prob)
+                n_incomplete = int(count * self.unpriv_ic_prob)
             selection = (self.complete_df[selector] == grp)
             indices = selection[selection.all(axis=1)].index
             incomplete_cases = np.random.choice(

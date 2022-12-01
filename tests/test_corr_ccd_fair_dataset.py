@@ -22,9 +22,6 @@ class TestCCDFairDataset(TestCase):
         }
         fbd = CorrelatedCCDFairDataset(n_samples=5, random_seed=43,
             alpha=0.4, method='simple_imputer.mean', dist=dist)
-        metric = BinaryLabelDatasetMetric(fbd,
-            privileged_groups=fbd.privileged_groups,
-            unprivileged_groups=fbd.unprivileged_groups)
 
         orig = [([0, 0], [3, 3], 0, 0), ([10, 14], [3, sqrt(11)], 0, 1),
                 ([0, 0], [3, 3], 1, 0), ([10, 14], [3, sqrt(11)], 1, 1)]

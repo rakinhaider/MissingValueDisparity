@@ -23,7 +23,7 @@ class FairDataset(BinaryLabelDataset):
     def __init__(self, **kwargs):
         """
             Args:
-                See :obj:`StandardDataset` for a description of the arguments.
+                See :obj:`BinaryLabelDataset` for a description of the arguments.
         """
 
         if kwargs['df'] is None:
@@ -32,11 +32,13 @@ class FairDataset(BinaryLabelDataset):
             df = kwargs['df']
 
         super(FairDataset, self).__init__(
-            df=df, label_names=[kwargs.get('label_name', str(df.columns[-1]))],
+            df=df, label_names=kwargs.get('label_names', [str(df.columns[-1])]),
             protected_attribute_names=kwargs.get(
                 'protected_attribute_names', str(df.columns[-2])),
             instance_weights_name=kwargs.get('instance_weights_name', None),
-            metadata=kwargs.get('metadata', default_mappings))
+            metadata=kwargs.get('metadata', default_mappings),
+            favorable_label=kwargs.get('favorable_label', 1),
+            unfavorable_label=kwargs.get('unfavorable_label', 0))
         # TODO: Add assert of fairness
 
     def generate_synthetic(self, dist, **kwargs):
@@ -57,7 +59,7 @@ class FairDataset(BinaryLabelDataset):
 
         protected_attribute_names = kwargs.get('protected_attribute_names',
                                                ['sex'])
-        label_names = [kwargs.get('label_name', 'label')]
+        label_names = kwargs.get('label_names', ['label'])
         columns = [str(i) for i in range(n_features)]
         columns += protected_attribute_names + label_names
         df = pd.DataFrame(columns=columns, dtype=float)
@@ -82,17 +84,6 @@ class FairDataset(BinaryLabelDataset):
         mus_ = np.zeros((2, 2, 2)) + 10
         sigmas_ = np.zeros((2, 2, 2)) + 3
         return {'mu': mus_, 'sigma': sigmas_}
-
-    def get_xy(self, keep_protected=False):
-        x, _ = self.convert_to_dataframe()
-        drop_fields = self.label_names.copy()
-        if not keep_protected:
-            drop_fields += self.protected_attribute_names
-
-        x = x.drop(columns=drop_fields)
-
-        y = self.labels.ravel()
-        return x, y
 
     def _filter(self, columns, values):
         df, _ = self.convert_to_dataframe()
