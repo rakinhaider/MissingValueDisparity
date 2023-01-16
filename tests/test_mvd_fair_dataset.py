@@ -1,5 +1,5 @@
 import numpy as np
-from datasets.fair_dataset import _get_n_samples, _validate_alpha_beta
+from datasets import _get_n_samples, _validate_alpha_beta
 from datasets.mvd_fair_dataset import MVDFairDataset
 from aif360.metrics.binary_label_dataset_metric import BinaryLabelDatasetMetric
 from unittest import TestCase

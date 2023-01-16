@@ -2,6 +2,8 @@ import logging
 import numpy as np
 from scipy import sparse
 from .ccd_fair_dataset import CCDFairDataset
+from .standard_missing_strategies import *
+
 
 class StandardCCDDataset(CCDFairDataset):
     def __init__(self, std_dataset, **kwargs):
@@ -31,31 +33,32 @@ class StandardCCDDataset(CCDFairDataset):
     def unprivileged_groups(self):
         return self.standard.unprivileged_groups
 
-    def generate_missing_matrix(self, **kwargs):
-        std_dataset = self.standard
+    def generate_missing_matrix(self, strategy=0, **kwargs):
         df = self.complete_df
-        protected_attribute_names = std_dataset.protected_attribute_names
-        n_samples = df.shape[0]
-        n_features = df.shape[1] - 1
-        col_name, col_index = self._get_missing_column()
-        missing_matrix = np.zeros((n_samples, n_features))
-        # print(col_name, col_index)
-        for r, p in zip([0, 1], [self.unpriv_ic_prob, self.priv_ic_prob]):
-            selector = df[protected_attribute_names[0]] == r
-            indices = [i for i, s in enumerate(selector.values) if s]
-            n_missing = int(np.ceil(p*len(indices)))
-            choices = np.random.choice(indices, size=n_missing, replace=False)
-            missing_matrix[choices, col_index] += 1
+        std_dataset = self.standard
+        pa_names = std_dataset.protected_attribute_names
+        label_names = std_dataset.label_names
+        uic, pic = self.unpriv_ic_prob, self.priv_ic_prob
+        strategy_names = {0: 'by_most_corr_col',
+                          1: 'by_column',
+                          2: 'rand_one_col_by_samples',
+                          3: 'rand_many_col_by_samples'}
+        strategy_name = strategy_names[strategy]
+        if strategy_name == 'by_most_corr_col':
+            missing_matrix = missing_by_top_corr_column(
+                df, uic, pic, pa_names, label_names)
+        elif strategy_name == 'by_column':
+            col_name = kwargs.get('missing_column_name')
+            if col_name is None:
+                raise ValueError("Must define column "
+                                 "for missing by column strategy")
+
+            missing_matrix = missing_by_column(df, uic, pic, pa_names, col_name)
+        elif strategy_name == 'rand_one_col_by_samples':
+            missing_matrix = missing_single_col_by_sample(df, uic, pic,
+                                                          pa_names, label_names)
+        elif strategy_name == 'rand_many_col_by_samples':
+            missing_matrix = missing_all_cols_by_sample(df, uic, pic,
+                                                        pa_names, label_names)
         return sparse.csr_matrix(missing_matrix)
 
-    def _get_missing_column(self):
-        df = self.complete_df
-        std_dataset = self.standard
-        corr = df.corr()[std_dataset.label_names[0]]
-        corr = np.abs(corr)
-        corr = corr.dropna()
-        corr = corr.drop(index=std_dataset.label_names[0])
-        corr = corr.drop(index=std_dataset.protected_attribute_names)
-        missing_column_name = corr.idxmax()
-        missing_column_index = df.columns.get_loc(missing_column_name)
-        return missing_column_name, missing_column_index

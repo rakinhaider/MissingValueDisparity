@@ -1,19 +1,20 @@
 import logging
 import argparse
 import numpy as np
-import pandas as pd
 
-from datasets.dataset_factory import DatasetFactory
-from aif360.algorithms.preprocessing.optim_preproc_helpers.\
-    data_preproc_functions import \
-    load_preproc_data_compas
-from aif360.datasets import GermanDataset, BankDataset
-from aif360.metrics import ClassificationMetric
+from datasets import DatasetFactory
+
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
+from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
+from aif360.metrics import ClassificationMetric
+from aif360.datasets import GermanDataset, BankDataset, AdultDataset
 from fairml import ExponentiatedGradientReduction, PrejudiceRemover
+from aif360.algorithms.preprocessing.optim_preproc_helpers.\
+    data_preproc_functions import \
+    load_preproc_data_compas, load_preproc_data_german, load_preproc_data_adult
 
 
 def get_parser():
@@ -65,6 +66,7 @@ def get_standard_dataset(dataset_name):
         dataset.privileged_groups = [{'race': 1}]
         dataset.unprivileged_groups = [{'race': 0}]
     elif dataset_name == 'german':
+        """
         dataset = GermanDataset(
             # this dataset also contains protected
             # attribute for "sex" which we do not
@@ -75,6 +77,8 @@ def get_standard_dataset(dataset_name):
             # ignore sex-related attributes
             features_to_drop=['personal_status', 'sex'],
         )
+        """
+        dataset = load_preproc_data_german(protected_attributes=['age'])
         dataset.privileged_groups = [{'age': 1}]
         dataset.unprivileged_groups = [{'age': 0}]
     elif dataset_name == 'bank':
@@ -85,6 +89,8 @@ def get_standard_dataset(dataset_name):
         )
         dataset.privileged_groups = [{'age': 1}]
         dataset.unprivileged_groups = [{'age': 0}]
+    elif dataset_name == 'adult':
+        dataset = load_preproc_data_adult()
     else:
         raise ValueError('Dataset name must be one of '
                          'compas, german, bank')
@@ -162,7 +168,7 @@ def get_samples_by_group(struct_dataset, privileged):
         struct_dataset, struct_dataset.protected_attribute_names, values)
 
 
-def get_xy(data, keep_protected=False):
+def get_xy(data, keep_protected=False, keep_features='all'):
     x, _ = data.convert_to_dataframe()
     drop_fields = data.label_names.copy()
     if not keep_protected:
@@ -170,27 +176,29 @@ def get_xy(data, keep_protected=False):
 
     x = x.drop(columns=drop_fields)
 
+    if keep_features != 'all':
+        x = x[keep_features]
+
     y = data.labels.ravel()
     return x, y
 
 
-def get_groupwise_performance(train_fd, test_fd, estimator,
-                              privileged=None,
-                              params=None,
-                              pos_rate=False,
-                              privileged_group=None,
-                              unprivileged_group=None):
+def get_groupwise_performance(train_fd, test_fd, estimator, privileged=None,
+                              params=None, pos_rate=False, keep_features='all',
+                              **kwargs):
 
     train_fd = get_samples_by_group(train_fd, privileged)
 
     if not params:
         params = get_model_params(estimator, train_fd)
 
-    keep_prot = (estimator == ExponentiatedGradientReduction) or (estimator == PrejudiceRemover)
-    model = train_model(estimator, train_fd, params, keep_prot=keep_prot)
-    results = get_classifier_metrics(model, test_fd,
-                                     verbose=False,
-                                     sel_rate=pos_rate, keep_prot=keep_prot)
+    keep_prot = (estimator == ExponentiatedGradientReduction)
+    keep_prot = keep_prot or (estimator == PrejudiceRemover)
+    model = train_model(estimator, train_fd, params, keep_prot=keep_prot,
+                        keep_features=keep_features, **kwargs)
+    results = get_classifier_metrics(model, test_fd, verbose=False,
+                                     sel_rate=pos_rate, keep_prot=keep_prot,
+                                     keep_features=keep_features)
 
     return model, results
 
@@ -198,6 +206,16 @@ def get_groupwise_performance(train_fd, test_fd, estimator,
 def get_model_params(model_type, train_fd):
     if model_type == SVC:
         params = {'probability': True}
+    # elif model_type == CategoricalNB:
+        # imputed_df, _ = get_xy(train_fd)
+        # min_categories = []
+        # for c in imputed_df.columns:
+        #     sz = imputed_df[c].value_counts()
+        #     # logging.info(c)
+        #     # logging.info(sz)
+        #     min_categories.append(sz.shape[0])
+        # logging.info(list(zip(min_categories, imputed_df.columns)))
+        # params = {'min_categories': min_categories}
     elif model_type == DecisionTreeClassifier:
         params = {'criterion': 'entropy',
                   'max_depth': 5,
@@ -255,28 +273,34 @@ def get_model_performances(model, test_fd, pred_func,
     return perf
 
 
-def get_predictions(model, test_fd, keep_prot=False):
-    test_fd_x, test_fd_y = get_xy(test_fd, keep_protected=keep_prot)
+def get_predictions(model, test_fd, keep_prot=False, keep_features='all',
+                    **kwargs):
+    test_fd_x, test_fd_y = get_xy(
+        test_fd, keep_protected=keep_prot, keep_features=keep_features)
+    logging.info(test_fd_x.shape)
     return model.predict(test_fd_x)
 
 
-def train_model(model_type, data, params, keep_prot=False):
-    x, y = get_xy(data, keep_protected=keep_prot)
+def train_model(model_type, data, params, keep_prot=False, keep_features='all',
+                calibrate=None, calibrate_cv=10):
+    x, y = get_xy(data, keep_protected=keep_prot, keep_features=keep_features)
 
     model = model_type(**params)
+    if calibrate:
+        model = CalibratedClassifierCV(model, method=calibrate, cv=calibrate_cv)
+        logging.info(model)
     model = model.fit(x, y)
-    # logging.info(model.__dict__)
     return model
 
 
-def get_classifier_metrics(clf, data,
-                           verbose=False,
-                           sel_rate=False, keep_prot=False):
+def get_classifier_metrics(clf, data, verbose=False, sel_rate=False,
+                           keep_prot=False, keep_features='all'):
     unprivileged_groups = data.unprivileged_groups
     privileged_groups = data.privileged_groups
 
     data_pred = data.copy()
-    data_x, data_y = get_xy(data, keep_protected=keep_prot)
+    data_x, data_y = get_xy(data, keep_protected=keep_prot,
+                            keep_features=keep_features)
     data_pred.labels = clf.predict(data_x)
     metrics = ClassificationMetric(data,
                                    data_pred,
@@ -311,15 +335,11 @@ def get_positive_rate(cmetrics, privileged=None, positive=True):
         return cmetrics.false_positive_rate(privileged)
 
 
-def get_c123(sigma_1, sigma_2, delta):
-    sigma_1_theta_sqr = sigma_1 ** 2 + delta ** 2 / 16
-    sigma_2_theta_sqr = sigma_2 ** 2 + delta ** 2 / 16
-
-    denominator = sigma_1_theta_sqr ** 2 * sigma_2 ** 2
-    denominator += sigma_2_theta_sqr ** 2 * sigma_1 ** 2
-    denominator = 2 * np.sqrt(2) * delta * np.sqrt(denominator)
-    c1 = delta ** 2 * sigma_2_theta_sqr / denominator
-    c3 = delta ** 2 * sigma_1_theta_sqr / denominator
-    c2 = 4 * sigma_1_theta_sqr * sigma_2_theta_sqr / denominator
-
-    return c1, c2, c3
+def KL_divergence(p, q, support=None):
+    divs = []
+    assert p.shape[0] == q.shape[0]
+    for pi, qi in zip(p, q):
+        qi = qi[:len(pi)]
+        divs.append(np.sum(pi*np.log2(qi/pi)))
+    logging.info(divs)
+    return -sum(divs)

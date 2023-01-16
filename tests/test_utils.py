@@ -7,7 +7,7 @@ class TestUtils(TestCase):
         data = CompasDataset()
         # print(get_privileged_groups(data))
 
-    def test_get_standard_dataset(self):
+    def test_get_standard_dataset_compas(self):
         data = get_standard_dataset('compas')
         assert data.unprivileged_groups == [{'race': 0}]
         assert data.privileged_groups == [{'race': 1}]
@@ -15,19 +15,26 @@ class TestUtils(TestCase):
         assert len(df[df['race'] == 0]) == 3175
         assert len(df[df['race'] == 1]) == 2103
 
+    def test_get_standard_dataset_german(self):
         data = get_standard_dataset('german')
+        print(data)
         assert data.privileged_groups == [{'age': 1}]
         assert data.unprivileged_groups == [{'age': 0}]
         df = data.metadata['params']['df']
-        assert len(df[df['age'] == 0]) == 149
-        assert len(df[df['age'] == 1]) == 851
+        assert len(df[df['age'] == 0]) == 190
+        assert len(df[df['age'] == 1]) == 810
 
+    def test_get_standard_dataset_bank(self):
         data = get_standard_dataset('bank')
         assert data.privileged_groups == [{'age': 1}]
         assert data.unprivileged_groups == [{'age': 0}]
         df = data.metadata['params']['df']
         assert len(df[df['age'] == 0]) == 864
         assert len(df[df['age'] == 1]) == 29624
+
+    def test_get_standarad_dataset_adult(self):
+        data = get_standard_dataset('adult')
+        print(data.__dict__)
 
     def test_get_samples_by_group(self):
         data = get_standard_dataset('compas')
@@ -57,3 +64,15 @@ class TestUtils(TestCase):
             out = get_table_row(is_header=header, var_value=var_value,
                 p_perf=perf, u_perf=perf, m_perf=perf, variable=variable)
             assert out == expecteds[i]
+
+    def test_kl_divergence(self):
+        p = np.array([[0.1, 0.4, 0.5], [0.1, 0.4, 0.5]])
+        q = np.array([[0.8, 0.15, 0.05], [0.8, 0.15, 0.05]])
+        output = KL_divergence(p, q)
+        assert np.isclose(output, -1.926979047*2)
+
+    def test_train_model(self):
+        model = train_model(GaussianNB, BankDataset(), {}, keep_prot=False,
+                            calibrate='sigmoid', calibrate_cv=10)
+
+        print(model)

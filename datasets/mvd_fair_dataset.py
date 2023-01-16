@@ -1,8 +1,9 @@
+import logging
+
 import pandas as pd
 import numpy as np
-import logging
 from scipy import sparse
-from .fair_dataset import FairDataset, default_mappings, _validate_alpha_beta
+from .fair_dataset import FairDataset, default_mappings
 from imputations import impute
 
 
@@ -45,6 +46,7 @@ class MVDFairDataset(FairDataset):
             label_names=label_names,
             instance_names=kwargs.get('instance_names', None)
         )
+        logging.info(incomplete_df.describe().loc['count'])
         if kwargs.get('imputer', None):
             self.imputer = kwargs['imputer']
             if kwargs.get('keep_im_prot', False):
@@ -66,20 +68,6 @@ class MVDFairDataset(FairDataset):
                 keep_im_prot=kwargs.get('keep_im_prot', False),
                 label_names=label_names,
                 protected_attribute_names=protected_attribute_names)
-
-        # Note: Hack to handle categorical value imputation
-        # TODO: Remove or re-do
-        if hasattr(self, 'standard'):
-            if kwargs.get('missing_column_name', None) is None:
-                col_name, index = self._get_missing_column()
-            else:
-                col_name = kwargs['missing_column_name']
-            self.missing_column_name = col_name
-            logging.info(imputed_df.dtypes)
-            logging.info(imputed_df[col_name].value_counts())
-            imputed_df[col_name] = imputed_df[col_name].astype('str').astype('category')
-            logging.info(imputed_df[col_name])
-            logging.info(imputed_df.dtypes)
 
         super(MVDFairDataset, self).__init__(
             df=imputed_df, label_names=label_names,
@@ -121,6 +109,7 @@ class MVDFairDataset(FairDataset):
         rows = self.R.tocoo().row
         cols = self.R.tocoo().col
         features[rows, cols] = float('nan')
+        logging.info(df.columns)
         df = pd.DataFrame(features, columns=df.columns,
             index=kwargs.get('instance_names', range(len(features))))
         df[label_names[0]] = y.values

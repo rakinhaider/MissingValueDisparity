@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import SimpleImputer, IterativeImputer, KNNImputer
-from fairimputer.group_mean_imputer import GroupImputer
+from missing_disparity.fairimputer.group_mean_imputer import GroupImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 
@@ -34,6 +34,8 @@ def impute(df, method='drop', label_names=['label'],
     else:
         if method == 'simple_imputer.mean':
             imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
+        elif method == 'simple_imputer.mode':
+            imputer = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
         elif method == 'iterative_imputer.mice':
             lr = LinearRegression()
             imputer = IterativeImputer(estimator=lr, max_iter=5,

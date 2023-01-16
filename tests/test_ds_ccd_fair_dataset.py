@@ -1,7 +1,6 @@
-import numpy as np
 from unittest import TestCase
 from utils import *
-from datasets.ds_ccd_fair_dataset import DSCCDFairDataset
+from datasets import DSCCDFairDataset
 from aif360.metrics.binary_label_dataset_metric import BinaryLabelDatasetMetric
 
 
