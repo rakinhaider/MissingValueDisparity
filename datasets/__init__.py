@@ -5,3 +5,4 @@ from .correlated_ccd_fair_dataset import CorrelatedCCDFairDataset
 from .ds_ccd_fair_dataset import DSCCDFairDataset
 from .fair_dataset import FairDataset
 from .standard_ccd_dataset import StandardCCDDataset
+from .pima_dataset import PimaDataset

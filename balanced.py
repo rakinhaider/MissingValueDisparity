@@ -1,15 +1,11 @@
 import logging
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import argparse
+
 import numpy as np
 import pandas as pd
 from utils import *
-from missing_disparity.sampling.synthetic_generator import(
-    synthetic, group_indices
-)
-from aif360.metrics import (BinaryLabelDatasetMetric as BM)
-SYNTHETIC_BASE_INDEX = 100000
+from datasets.standard_ccd_dataset import StandardCCDDataset
 
 
 def get_indices(dataset, condition=None, label=None):
@@ -120,18 +116,52 @@ def fix_balanced_dataset(dataset):
     assert li == lf and lf == ls
 
 
+def stratify_data(data):
+    df, _ = data.convert_to_dataframe()
+    grouped = df.groupby(data.protected_attribute_names + data.label_names)
+    min_group = min([len(grp_df) for _, grp_df in grouped])
+    selected_indices = []
+    for grp, grp_df in grouped:
+        choice = np.random.choice(list(grp_df.index), min_group, replace=False)
+        selected_indices.extend(choice)
+
+    selected_indices = [data.instance_names.index(i) for i in selected_indices]
+    return data.subset(selected_indices)
+
+
+def introduce_missing_values(train, test, args):
+    train = StandardCCDDataset(train, priv_ic_prob=args.pic,
+                               unpriv_ic_prob=args.uic, strategy=3,
+                               method=args.method)
+    incomplete_df = train.get_incomplete_df(
+        protected_attribute_names=train.protected_attribute_names,
+        label_names=train.label_names, instance_names=train.instance_names)
+    logging.info(incomplete_df.describe().loc['count'])
+
+    test = StandardCCDDataset(test, priv_ic_prob=0, unpriv_ic_prob=0,
+                              method='baseline')
+    return train, test
+
+
 if __name__ == "__main__":
     np.random.seed(23)
 
     args = argparse.ArgumentParser(
-            description="OrigVSSyntheticExperiement",
+            description="BalancedExperiement",
     )
     args.add_argument("-d", "--data", choices=["compas"], default='compas')
-    args.add_argument('-m', '--model-type', choices=['gnb', 'mixednb', 'cat_nb'],
-                      default='cat_nb')
+    args.add_argument('-m', '--model-type', default='cat_nb',
+                      choices=['gnb', 'mixednb', 'cat_nb', 'lr'])
     args.add_argument('-s', '--sample-mode', default=2, type=int)
     args.add_argument('--split', default=0.8, help='Train test split')
-    args.add_argument('-r', '--random-seed', default=23)
+    args.add_argument('--method', default='simple_imputer.mode',
+                      help='Imputation method')
+    args.add_argument('--uic', default=0.3, type=float,
+                      help='Unprivileged missing rate')
+    args.add_argument('--pic', default=0.1, type=float,
+                      help='Privileged missing rate')
+    args.add_argument('-r', '--random-seed', default=47)
+    args.add_argument('-ll', '--log-level', default=logging.ERROR)
 
     args = args.parse_args()
     sample_mode = args.sample_mode
@@ -140,67 +170,50 @@ if __name__ == "__main__":
     model_type = get_estimator(args.model_type, reduce=False)
     estimator = model_type
     params = {}
-    # The following line is not necessary here. Didn't remove to
-    # ensure reproducibility. Inside the function we used random numbers.
-    # Removing them will  result different random numbers in later experiments.
-    # Similar pattern in results but different values.
-    # exp_compas_orig(params, verbose=False)
 
-    # print_table_row(is_header=True)
+    np.random.seed(random_seed)
+    logging.basicConfig(level=args.log_level)
 
-    for repair_rate in np.arange(0.2, 1.2, 0.2):
-        logging.info(repair_rate)
-        dataset_balanced = get_balanced_dataset(
-            dataset_orig, sample_mode, repair_rate)
-        fix_balanced_dataset(dataset_balanced)
-        bm = BM(dataset_balanced, dataset_balanced.unprivileged_groups,
-                dataset_balanced.privileged_groups)
-        print(dataset_balanced.instance_names[-1])
-        print(bm.base_rate(privileged=True))
-        print(bm.base_rate(privileged=False))
-        print(bm.base_rate(privileged=None))
+    # Orig
+    data = get_standard_dataset(args.data)
+    # Stratify
+    data = stratify_data(data)
+    # Train Test Split
+    train, test = data.split([0.8], shuffle=True)
+    # Missing in train
+    train, test = introduce_missing_values(train, test, args)
 
-        train_fd, test_fd = dataset_balanced.split(
-            [args.split], shuffle=True, seed=args.random_seed)
+    variable = ('data', 'uic')
+    keep_prot = False
 
-        pmod, p_result = get_groupwise_performance(
-            train_fd, test_fd, model_type,
-            privileged=True, params=params, pos_rate=False
-        )
+    pmod, pmod_results = get_groupwise_performance(
+        train, test, estimator, privileged=True, pos_rate=False
+    )
+    umod, umod_results = get_groupwise_performance(
+        train, test, estimator, privileged=False, pos_rate=False
+    )
+    mod, mod_results = get_groupwise_performance(
+        train, test, estimator, privileged=None, pos_rate=False,
+    )
+    p_perf = get_model_performances(pmod, test, get_predictions,
+                                    keep_prot=keep_prot)
+    u_perf = get_model_performances(umod, test, get_predictions,
+                                    keep_prot=keep_prot)
+    m_perf = get_model_performances(mod, test, get_predictions,
+                                    keep_prot=keep_prot)
 
-        umod, u_result = get_groupwise_performance(
-            train_fd, test_fd, model_type,
-            privileged=False, params=params, pos_rate=False
-        )
-        mod, m_result = get_groupwise_performance(
-            train_fd, test_fd, model_type,
-            privileged=None, params=params, pos_rate=False
-        )
+    test_x, test_y = get_xy(test, keep_protected=False)
+    proba = mod.predict_proba(test_x)
+    out_dir = 'outputs/standard/{}/balanced/'.format(args.data)
+    os.makedirs(out_dir, exist_ok=True)
+    pd.DataFrame(proba, columns=[0, 1]).to_csv(
+        out_dir + 'proba_{:s}_{:s}_{:.2f}.tsv'.format(
+            args.data, args.model_type, args.uic),
+        sep='\t'
+    )
 
-        ######### Getting group-wise KL-divergence with orig distribution #########
-        complete_pmod, _ = get_groupwise_performance(
-            dataset_balanced, dataset_balanced, estimator, privileged=True, pos_rate=False
-        )
-        complete_umod, _ = get_groupwise_performance(
-            dataset_balanced, dataset_balanced, estimator, privileged=False, pos_rate=False
-        )
-
-        p_pos_dist = np.array(
-            [np.exp(i[0]) for i in complete_pmod.feature_log_prob_])
-        u_pos_dist = np.array(
-            [np.exp(i[0]) for i in complete_umod.feature_log_prob_])
-        mod_pos_dist = np.array([np.exp(i[0]) for i in mod.feature_log_prob_])
-
-        p_to_mod = KL_divergence(p_pos_dist, mod_pos_dist)
-        u_to_mod = KL_divergence(u_pos_dist, mod_pos_dist)
-
-        print('divergences')
-        print(p_to_mod)
-        print(u_to_mod)
-
-        p_perf = get_model_performances(pmod, test_fd, get_predictions)
-        u_perf = get_model_performances(umod, test_fd, get_predictions)
-        m_perf = get_model_performances(mod, test_fd, get_predictions)
-        row = get_table_row(is_header=False, p_perf=p_perf,
-                            u_perf=u_perf, m_perf=m_perf)
-        print(row)
+    row = get_table_row(is_header=False, p_perf=p_perf, u_perf=u_perf,
+                        m_perf=m_perf, variable=variable,
+                        var_value=(args.data, args.uic))
+    print(row, flush=True)
+    logging.StreamHandler().flush()

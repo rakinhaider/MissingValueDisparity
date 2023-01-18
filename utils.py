@@ -2,7 +2,7 @@ import logging
 import argparse
 import numpy as np
 
-from datasets import DatasetFactory
+from datasets import DatasetFactory, PimaDataset
 
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
@@ -10,7 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
 from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
 from aif360.metrics import ClassificationMetric
-from aif360.datasets import GermanDataset, BankDataset, AdultDataset
+from aif360.datasets import GermanDataset, BankDataset, AdultDataset, CompasDataset
 from fairml import ExponentiatedGradientReduction, PrejudiceRemover
 from aif360.algorithms.preprocessing.optim_preproc_helpers.\
     data_preproc_functions import \
@@ -66,7 +66,6 @@ def get_standard_dataset(dataset_name):
         dataset.privileged_groups = [{'race': 1}]
         dataset.unprivileged_groups = [{'race': 0}]
     elif dataset_name == 'german':
-        """
         dataset = GermanDataset(
             # this dataset also contains protected
             # attribute for "sex" which we do not
@@ -77,8 +76,7 @@ def get_standard_dataset(dataset_name):
             # ignore sex-related attributes
             features_to_drop=['personal_status', 'sex'],
         )
-        """
-        dataset = load_preproc_data_german(protected_attributes=['age'])
+        # dataset = load_preproc_data_german(protected_attributes=['age'])
         dataset.privileged_groups = [{'age': 1}]
         dataset.unprivileged_groups = [{'age': 0}]
     elif dataset_name == 'bank':
@@ -91,6 +89,11 @@ def get_standard_dataset(dataset_name):
         dataset.unprivileged_groups = [{'age': 0}]
     elif dataset_name == 'adult':
         dataset = load_preproc_data_adult()
+        # dataset = AdultDataset()
+    elif dataset_name == 'pima':
+        dataset = PimaDataset()
+        dataset.privileged_groups = [{'Age': 1}]
+        dataset.unprivileged_groups = [{'Age': 0}]
     else:
         raise ValueError('Dataset name must be one of '
                          'compas, german, bank')
@@ -246,6 +249,26 @@ def get_model_params(model_type, train_fd):
     return params
 
 
+def get_predictions(model, test_fd, keep_prot=False, keep_features='all',
+                    **kwargs):
+    test_fd_x, test_fd_y = get_xy(
+        test_fd, keep_protected=keep_prot, keep_features=keep_features)
+    logging.info(test_fd_x.shape)
+    return model.predict(test_fd_x)
+
+
+def train_model(model_type, data, params, keep_prot=False, keep_features='all',
+                calibrate=None, calibrate_cv=10):
+    x, y = get_xy(data, keep_protected=keep_prot, keep_features=keep_features)
+
+    model = model_type(**params)
+    if calibrate:
+        model = CalibratedClassifierCV(model, method=calibrate, cv=calibrate_cv)
+        logging.info(model)
+    model = model.fit(x, y)
+    return model
+
+
 def get_model_performances(model, test_fd, pred_func,
                            keep_prot=False, **kwargs):
     data = test_fd.copy()
@@ -271,26 +294,6 @@ def get_model_performances(model, test_fd, pred_func,
     for k in perf:
         perf[k] = perf[k] * 100
     return perf
-
-
-def get_predictions(model, test_fd, keep_prot=False, keep_features='all',
-                    **kwargs):
-    test_fd_x, test_fd_y = get_xy(
-        test_fd, keep_protected=keep_prot, keep_features=keep_features)
-    logging.info(test_fd_x.shape)
-    return model.predict(test_fd_x)
-
-
-def train_model(model_type, data, params, keep_prot=False, keep_features='all',
-                calibrate=None, calibrate_cv=10):
-    x, y = get_xy(data, keep_protected=keep_prot, keep_features=keep_features)
-
-    model = model_type(**params)
-    if calibrate:
-        model = CalibratedClassifierCV(model, method=calibrate, cv=calibrate_cv)
-        logging.info(model)
-    model = model.fit(x, y)
-    return model
 
 
 def get_classifier_metrics(clf, data, verbose=False, sel_rate=False,
