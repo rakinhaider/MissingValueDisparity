@@ -9,6 +9,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
 from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
+from sklearn.model_selection import cross_validate, cross_val_predict
 from aif360.metrics import ClassificationMetric
 from aif360.datasets import GermanDataset, BankDataset, AdultDataset, CompasDataset
 from fairml import ExponentiatedGradientReduction, PrejudiceRemover
@@ -186,26 +187,6 @@ def get_xy(data, keep_protected=False, keep_features='all'):
     return x, y
 
 
-def get_groupwise_performance(train_fd, test_fd, estimator, privileged=None,
-                              params=None, pos_rate=False, keep_features='all',
-                              **kwargs):
-
-    train_fd = get_samples_by_group(train_fd, privileged)
-
-    if not params:
-        params = get_model_params(estimator, train_fd)
-
-    keep_prot = (estimator == ExponentiatedGradientReduction)
-    keep_prot = keep_prot or (estimator == PrejudiceRemover)
-    model = train_model(estimator, train_fd, params, keep_prot=keep_prot,
-                        keep_features=keep_features, **kwargs)
-    results = get_classifier_metrics(model, test_fd, verbose=False,
-                                     sel_rate=pos_rate, keep_prot=keep_prot,
-                                     keep_features=keep_features)
-
-    return model, results
-
-
 def get_model_params(model_type, train_fd):
     if model_type == SVC:
         params = {'probability': True}
@@ -269,66 +250,52 @@ def train_model(model_type, data, params, keep_prot=False, keep_features='all',
     return model
 
 
-def get_model_performances(model, test_fd, pred_func,
-                           keep_prot=False, **kwargs):
-    data = test_fd.copy()
-    data_pred = test_fd.copy()
-    data_pred.labels = pred_func(model, test_fd, keep_prot=keep_prot, **kwargs)
-
-    metrics = ClassificationMetric(
-        data, data_pred, privileged_groups=test_fd.privileged_groups,
-        unprivileged_groups=test_fd.unprivileged_groups)
-
-    perf = {}
-    perf['SR'] = metrics.selection_rate()
-
-    perf['AC_p'] = metrics.accuracy(privileged=True)
-    perf['SR_p'] = metrics.selection_rate(privileged=True)
-    perf['TPR_p'] = metrics.true_positive_rate(privileged=True)
-    perf['FPR_p'] = metrics.false_positive_rate(privileged=True)
-
-    perf['AC_u'] = metrics.accuracy(privileged=False)
-    perf['SR_u'] = metrics.selection_rate(privileged=False)
-    perf['TPR_u'] = metrics.true_positive_rate(privileged=False)
-    perf['FPR_u'] = metrics.false_positive_rate(privileged=False)
-    for k in perf:
-        perf[k] = perf[k] * 100
-    return perf
-
-
-def get_classifier_metrics(clf, data, verbose=False, sel_rate=False,
-                           keep_prot=False, keep_features='all'):
-    unprivileged_groups = data.unprivileged_groups
-    privileged_groups = data.privileged_groups
-
+def get_classifier_metrics(clf, data, keep_prot=False, keep_features='all'):
     data_pred = data.copy()
     data_x, data_y = get_xy(data, keep_protected=keep_prot,
                             keep_features=keep_features)
     data_pred.labels = clf.predict(data_x)
-    metrics = ClassificationMetric(data,
-                                   data_pred,
-                                   privileged_groups=privileged_groups,
-                                   unprivileged_groups=unprivileged_groups)
+    metrics = ClassificationMetric(
+        data, data_pred, privileged_groups=data.privileged_groups,
+        unprivileged_groups=data.unprivileged_groups)
 
-    if verbose:
-        print('Mean Difference:', abs(0 - metrics.mean_difference()))
-        print('Disparate Impact:', abs(1 - metrics.disparate_impact()))
-        # print('Confusion Matrix:', metrics.binary_confusion_matrix())
-        print('Accuracy:', metrics.accuracy())
+    perf = {'SR': metrics.selection_rate()}
 
-    m = [metrics.mean_difference(),
-         metrics.disparate_impact(),
-         abs(1 - metrics.disparate_impact()),
-         metrics.accuracy(),
-         metrics.accuracy(privileged=True),
-         metrics.accuracy(privileged=False)]
+    for grp, is_priv in zip(['p', 'u'], [True, False]):
+        perf['AC_' + grp] = metrics.accuracy(privileged=is_priv)
+        perf['SR_' + grp] = metrics.selection_rate(privileged=is_priv)
+        perf['TPR_' + grp] = metrics.true_positive_rate(privileged=is_priv)
+        perf['FPR_' + grp] = metrics.false_positive_rate(privileged=is_priv)
 
-    if sel_rate:
-        for pg in [True, False]:
-            for sr in [True, False]:
-                m.append(get_positive_rate(metrics, pg, sr))
+    for k in perf:
+        perf[k] = perf[k] * 100
 
-    return m
+    return perf
+
+
+def get_groupwise_performance(estimator, train_fd, test_fd=None,
+                              privileged=None, params=None, keep_features='all',
+                              xvalid=False, **kwargs):
+
+    train_fd = get_samples_by_group(train_fd, privileged)
+    test_fd = get_samples_by_group(test_fd, privileged)
+    if not params:
+        params = get_model_params(estimator, train_fd)
+
+    keep_prot = (estimator == ExponentiatedGradientReduction)
+    keep_prot = keep_prot or (estimator == PrejudiceRemover)
+
+    train_x, train_y = get_xy(train_fd, keep_prot, keep_features)
+    test_x, test_y = get_xy(test_fd, keep_prot, keep_features)
+    if not xvalid:
+        model = train_model(estimator, train_fd, params, keep_prot=keep_prot,
+                            keep_features=keep_features, **kwargs)
+        results = get_classifier_metrics(model, test_fd, keep_prot=keep_prot,
+                                         keep_features=keep_features)
+    else:
+        pass
+
+    return model, results
 
 
 def get_positive_rate(cmetrics, privileged=None, positive=True):

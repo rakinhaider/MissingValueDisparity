@@ -81,19 +81,13 @@ if __name__ == "__main__":
         n_samples=n_samples, n_features=n_feature,
         test_method=test_method, **kwargs)
 
-    pmod, pmod_results = get_groupwise_performance(
-        train_fd, test_fd, estimator, privileged=True, pos_rate=False)
-    umod, umod_results = get_groupwise_performance(
-        train_fd, test_fd, estimator, privileged=False, pos_rate=False)
-    mod, mod_results = get_groupwise_performance(
-        train_fd, test_fd, estimator, privileged=None, pos_rate=False)
+    pmod, p_perf = get_groupwise_performance(
+        estimator, train_fd, test_fd, privileged=True)
+    umod, u_perf = get_groupwise_performance(
+        estimator, train_fd, test_fd, privileged=False)
+    mod, m_perf = get_groupwise_performance(
+        estimator, train_fd, test_fd, privileged=None)
 
-    p_perf = get_model_performances(pmod, test_fd,
-                                    get_predictions, keep_prot=keep_prot)
-    u_perf = get_model_performances(umod, test_fd,
-                                    get_predictions, keep_prot=keep_prot)
-    m_perf = get_model_performances(mod, test_fd,
-                                    get_predictions, keep_prot=keep_prot)
     row = get_table_row(
         is_header=False, var_value=(alpha, method), p_perf=p_perf,
         u_perf=u_perf, m_perf=m_perf, variable=variable)

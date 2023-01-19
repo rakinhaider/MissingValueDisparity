@@ -186,21 +186,12 @@ if __name__ == "__main__":
     variable = ('data', 'uic')
     keep_prot = False
 
-    pmod, pmod_results = get_groupwise_performance(
-        train, test, estimator, privileged=True, pos_rate=False
-    )
-    umod, umod_results = get_groupwise_performance(
-        train, test, estimator, privileged=False, pos_rate=False
-    )
-    mod, mod_results = get_groupwise_performance(
-        train, test, estimator, privileged=None, pos_rate=False,
-    )
-    p_perf = get_model_performances(pmod, test, get_predictions,
-                                    keep_prot=keep_prot)
-    u_perf = get_model_performances(umod, test, get_predictions,
-                                    keep_prot=keep_prot)
-    m_perf = get_model_performances(mod, test, get_predictions,
-                                    keep_prot=keep_prot)
+    pmod, p_perf = get_groupwise_performance(
+        estimator, train, test, privileged=True)
+    umod, u_perf = get_groupwise_performance(
+        estimator, train, test, privileged=False)
+    mod, m_perf = get_groupwise_performance(
+        estimator, train, test, privileged=None)
 
     test_x, test_y = get_xy(test, keep_protected=False)
     proba = mod.predict_proba(test_x)
