@@ -132,11 +132,13 @@ if __name__ == "__main__":
             keep_features=keep_features, xvalid=args.xvalid, **cali_kwargs
         )
 
-        test_x, test_y = get_xy(test, keep_protected=keep_prot,
-                                keep_features=keep_features)
-        proba = mod.predict_proba(test_x)
-        save_probas(args, proba)
-        save_models(args, dict(zip([pmod, umod, mod], ['pmod', 'umod', 'mod'])))
+        if not args.xvalid:
+            test_x, test_y = get_xy(test, keep_protected=keep_prot,
+                                    keep_features=keep_features)
+            proba = mod.predict_proba(test_x)
+            save_probas(args, proba)
+            save_models(args, dict(zip([pmod, umod, mod],
+                                       ['pmod', 'umod', 'mod'])))
 
         ######### Getting group-wise KL-divergence with test distribution #########
         complete_pmod, _ = get_groupwise_performance(

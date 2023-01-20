@@ -149,12 +149,12 @@ if __name__ == "__main__":
     args = argparse.ArgumentParser(
             description="BalancedExperiement",
     )
-    args.add_argument("-d", "--data", choices=["compas"], default='compas')
+    args.add_argument("-d", "--data", choices=["compas", "pima"],
+                      default='compas')
     args.add_argument('-m', '--model-type', default='cat_nb',
-                      choices=['gnb', 'mixednb', 'cat_nb', 'lr'])
-    args.add_argument('-s', '--sample-mode', default=2, type=int)
+                      choices=['nb', 'mixednb', 'cat_nb', 'lr'])
     args.add_argument('--split', default=0.8, help='Train test split')
-    args.add_argument('--method', default='simple_imputer.mode',
+    args.add_argument('--method', default='simple_imputer.mean',
                       help='Imputation method')
     args.add_argument('--uic', default=0.3, type=float,
                       help='Unprivileged missing rate')
@@ -164,7 +164,6 @@ if __name__ == "__main__":
     args.add_argument('-ll', '--log-level', default=logging.ERROR)
 
     args = args.parse_args()
-    sample_mode = args.sample_mode
     random_seed = args.random_seed
     dataset_orig = get_standard_dataset(args.data)
     model_type = get_estimator(args.model_type, reduce=False)
@@ -183,7 +182,7 @@ if __name__ == "__main__":
     # Missing in train
     train, test = introduce_missing_values(train, test, args)
 
-    variable = ('data', 'uic')
+    variable = ('data', 'uic', 'pic')
     keep_prot = False
 
     pmod, p_perf = get_groupwise_performance(
@@ -205,6 +204,6 @@ if __name__ == "__main__":
 
     row = get_table_row(is_header=False, p_perf=p_perf, u_perf=u_perf,
                         m_perf=m_perf, variable=variable,
-                        var_value=(args.data, args.uic))
+                        var_value=(args.data, args.uic, args.pic))
     print(row, flush=True)
     logging.StreamHandler().flush()

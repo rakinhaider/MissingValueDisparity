@@ -1,6 +1,7 @@
 import logging
 import argparse
 import numpy as np
+import pandas as pd
 
 from datasets import DatasetFactory, PimaDataset
 
@@ -8,10 +9,11 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
+from sklearn.metrics import make_scorer
 from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
-from sklearn.model_selection import cross_validate, cross_val_predict
+from sklearn.model_selection import KFold
 from aif360.metrics import ClassificationMetric
-from aif360.datasets import GermanDataset, BankDataset, AdultDataset, CompasDataset
+from aif360.datasets import GermanDataset, BankDataset, AdultDataset, CompasDataset, BinaryLabelDataset
 from fairml import ExponentiatedGradientReduction, PrejudiceRemover
 from aif360.algorithms.preprocessing.optim_preproc_helpers.\
     data_preproc_functions import \
@@ -238,10 +240,7 @@ def get_predictions(model, test_fd, keep_prot=False, keep_features='all',
     return model.predict(test_fd_x)
 
 
-def train_model(model_type, data, params, keep_prot=False, keep_features='all',
-                calibrate=None, calibrate_cv=10):
-    x, y = get_xy(data, keep_protected=keep_prot, keep_features=keep_features)
-
+def train_model(model_type, x, y, params, calibrate=None, calibrate_cv=10):
     model = model_type(**params)
     if calibrate:
         model = CalibratedClassifierCV(model, method=calibrate, cv=calibrate_cv)
@@ -273,6 +272,35 @@ def get_classifier_metrics(clf, data, keep_prot=False, keep_features='all'):
     return perf
 
 
+def scoring_function(y, y_pred, **kwargs):
+    test_fd = kwargs['test_fd']
+    privileged = kwargs['privileged']
+    acc = kwargs.get('ac', False)
+    sr = kwargs.get('sr', False)
+    tpr = kwargs.get('tpr', False)
+    fpr = kwargs.get('fpr', False)
+    data = test_fd.copy()
+    data.labels = y
+    data_pred = test_fd.copy()
+    data_pred.labels = y_pred
+    data.instance_weights = data_pred.instance_weights = np.ones(len(y))
+    logging.info('scoring_function')
+    metrics = ClassificationMetric(
+        data, data_pred, privileged_groups=data.privileged_groups,
+        unprivileged_groups=data.unprivileged_groups)
+
+    if acc:
+        logging.info(metrics.accuracy(privileged))
+        return metrics.accuracy(privileged)
+    elif sr:
+        return metrics.selection_rate(privileged)
+    elif tpr:
+        return metrics.true_positive_rate(privileged)
+    elif fpr:
+        return metrics.false_positive_rate(privileged)
+    raise ValueError('In correct scoring function.')
+
+
 def get_groupwise_performance(estimator, train_fd, test_fd=None,
                               privileged=None, params=None, keep_features='all',
                               xvalid=False, **kwargs):
@@ -288,12 +316,40 @@ def get_groupwise_performance(estimator, train_fd, test_fd=None,
     train_x, train_y = get_xy(train_fd, keep_prot, keep_features)
     test_x, test_y = get_xy(test_fd, keep_prot, keep_features)
     if not xvalid:
-        model = train_model(estimator, train_fd, params, keep_prot=keep_prot,
-                            keep_features=keep_features, **kwargs)
+        model = train_model(estimator, train_x, train_y, params, **kwargs)
         results = get_classifier_metrics(model, test_fd, keep_prot=keep_prot,
                                          keep_features=keep_features)
     else:
-        pass
+        """
+        scorers = {
+            'AC_p': make_scorer(scoring_function, ac=True, privileged=True, test_fd=train_fd),
+            # 'AC_u':make_scorer(scoring_function, ac=True, privileged=False, test_fd=train_fd),
+            # 'SR_p':make_scorer(scoring_function, sr=True, privileged=True, test_fd=train_fd),
+            # 'SR_u':make_scorer(scoring_function, sr=True, privileged=False, test_fd=train_fd),
+            # 'TPR_p':make_scorer(scoring_function, tpr=True, privileged=True, test_fd=train_fd),
+            # 'TPR_u':make_scorer(scoring_function, tpr=True, privileged=False, test_fd=train_fd),
+            # 'FPR_p':make_scorer(scoring_function, fpr=True, privileged=True, test_fd=train_fd),
+            # 'FPR_u':make_scorer(scoring_function, fpr=True, privileged=False, test_fd=train_fd),
+        }
+        estimator = estimator(**params)
+        results = cross_validate(estimator, train_x, train_y, cv=10,
+                                 return_estimator=True, scoring=scorers,
+                                 error_score='raise')
+        logging.info(results.keys())
+        logging.info(results)
+        model = results['estimator']
+        results = {key[5:]: results[key] for key in results if 'test_' in key}
+        logging.info(results)
+        """
+        kf = KFold(n_splits=10)
+        X = train_x.copy(deep=True)
+        X[train_fd.label_names] = train_y
+        for train, test in kf.split(X):
+            x, y = train[train.column[:-1]], train[train.column[-1]]
+            model = train_model(estimator, x, y, params, **kwargs)
+            results = get_classifier_metrics(model, test_fd,
+                                             keep_prot=keep_prot,
+                                             keep_features=keep_features)
 
     return model, results
 
