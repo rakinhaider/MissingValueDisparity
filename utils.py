@@ -9,7 +9,6 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
-from sklearn.metrics import make_scorer
 from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
 from sklearn.model_selection import KFold
 from aif360.metrics import ClassificationMetric
@@ -303,7 +302,7 @@ def scoring_function(y, y_pred, **kwargs):
 
 def get_groupwise_performance(estimator, train_fd, test_fd=None,
                               privileged=None, params=None, keep_features='all',
-                              xvalid=False, **kwargs):
+                              **kwargs):
 
     train_fd = get_samples_by_group(train_fd, privileged)
     test_fd = get_samples_by_group(test_fd, privileged)
@@ -314,44 +313,26 @@ def get_groupwise_performance(estimator, train_fd, test_fd=None,
     keep_prot = keep_prot or (estimator == PrejudiceRemover)
 
     train_x, train_y = get_xy(train_fd, keep_prot, keep_features)
-    test_x, test_y = get_xy(test_fd, keep_prot, keep_features)
-    if not xvalid:
-        model = train_model(estimator, train_x, train_y, params, **kwargs)
-        results = get_classifier_metrics(model, test_fd, keep_prot=keep_prot,
-                                         keep_features=keep_features)
-    else:
-        """
-        scorers = {
-            'AC_p': make_scorer(scoring_function, ac=True, privileged=True, test_fd=train_fd),
-            # 'AC_u':make_scorer(scoring_function, ac=True, privileged=False, test_fd=train_fd),
-            # 'SR_p':make_scorer(scoring_function, sr=True, privileged=True, test_fd=train_fd),
-            # 'SR_u':make_scorer(scoring_function, sr=True, privileged=False, test_fd=train_fd),
-            # 'TPR_p':make_scorer(scoring_function, tpr=True, privileged=True, test_fd=train_fd),
-            # 'TPR_u':make_scorer(scoring_function, tpr=True, privileged=False, test_fd=train_fd),
-            # 'FPR_p':make_scorer(scoring_function, fpr=True, privileged=True, test_fd=train_fd),
-            # 'FPR_u':make_scorer(scoring_function, fpr=True, privileged=False, test_fd=train_fd),
-        }
-        estimator = estimator(**params)
-        results = cross_validate(estimator, train_x, train_y, cv=10,
-                                 return_estimator=True, scoring=scorers,
-                                 error_score='raise')
-        logging.info(results.keys())
-        logging.info(results)
-        model = results['estimator']
-        results = {key[5:]: results[key] for key in results if 'test_' in key}
-        logging.info(results)
-        """
-        kf = KFold(n_splits=10)
-        X = train_x.copy(deep=True)
-        X[train_fd.label_names] = train_y
-        for train, test in kf.split(X):
-            x, y = train[train.column[:-1]], train[train.column[-1]]
-            model = train_model(estimator, x, y, params, **kwargs)
-            results = get_classifier_metrics(model, test_fd,
-                                             keep_prot=keep_prot,
-                                             keep_features=keep_features)
+    model = train_model(estimator, train_x, train_y, params, **kwargs)
+    results = get_classifier_metrics(model, test_fd, keep_prot=keep_prot,
+                                     keep_features=keep_features)
 
     return model, results
+
+
+def cross_validate(estimator, x, y, **kwargs):
+    test_fd = kwargs['fd']
+    kf = KFold(n_splits=10)
+    for train_indices, test_indices in kf.split(x, y):
+        train_x, train_y = x[train_indices], y[train_indices]
+        # test_x, test_y = x[test_indices], y[test_indices]
+        estimator.fit(train_x, train_y)
+        test_fd_subset = test_fd.subset(test_indices)
+        results = get_classifier_metrics(estimator, test_fd_subset,
+                                         **kwargs)
+        print(results)
+    estimator.fit(x, y)
+    return estimator, results
 
 
 def get_positive_rate(cmetrics, privileged=None, positive=True):

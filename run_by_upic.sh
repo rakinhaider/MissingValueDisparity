@@ -26,14 +26,19 @@ elif [ $1 == "std" ]; then
 	for dataset in ${datasets[@]}; do
 		for estimator in ${estimators[@]}; do
 			for is_cali in 0 1; do
-				# calibration="-c isotonic -ccv 10"
 				calibration=""
 				if [ ${is_cali} == 1 ]
 				then
 					calibration="-c isotonic -ccv 10"
 				fi
 				for strategy in 0 2 3; do
-					dir=outputs/standard/${dataset}/results/${estimator}/
+					xval_dir=''
+					if [ ${xvalid} == '-x' ]
+					then
+						xval_dir='xval/'
+						is_xval=1
+					fi
+					dir=outputs/standard/${dataset}/${xval_dir}results/${estimator}/
 					echo ${dir};
 					mkdir -p $dir;
 					file_name=${dataset}_${estimator}_${is_cali}_${strategy}.tsv
@@ -96,7 +101,7 @@ elif [ $1 == "balanced" ]; then
 		-d ${dataset}\
 		--pic 0 --uic 0 -m ${estimator} --method ${method} \
 		>>${dir}/${file_name};
-
+		echo "####################################################################################";
 		for upic in 0.1 0.2 0.3 0.4 0.5 0.6; do
 			echo "upic" ${upic};
 			python -m balanced\
@@ -112,5 +117,6 @@ elif [ $1 == "balanced" ]; then
 			--uic 0 --pic ${pic} -m ${estimator} --method ${method}\
 			>>${dir}/${file_name};
 		done
+		echo "####################################################################################";
 	done
 fi
