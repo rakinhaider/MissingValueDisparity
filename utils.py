@@ -140,6 +140,7 @@ def get_synthetic_train_test_split(type='ccd',
             # NOTE: In case we want different train test imputations. Not
             # logical though.
             test_kwargs['method'] = test_method
+        logging.info(test_kwargs['method'])
         test_fd = factory.get_dataset(type=type, random_seed=test_random_state,
                                       **test_kwargs)
 

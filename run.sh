@@ -5,9 +5,7 @@ test_method=$2
 
 methods=('baseline' 'drop' 'simple_imputer.mean'
 'iterative_imputer.mice'
-'iterative_imputer.missForest'
-'knn_imputer'
-'group_imputer')
+'knn_imputer')
 
 if [ $1 == "syn" ]; then
 	python -m experiment_synthetic --header-only;
@@ -42,19 +40,21 @@ fi
 
 for is_kip in ''; do
 	echo "Keep protected param:" $is_kip;
-	if [[ "$is_kip" == '' ]]
-	then
-		fname="${type}_${test_method}_nop.tsv";
-	else
-		fname="${type}_${test_method}_kip.tsv";
-	fi
-	python -m experiment_synthetic --header-only >outputs/synthetic/$fname;
-	for alpha in 0.25 0.5 0.75; do
-		for m in ${methods[@]}; do
-			python -m experiment_synthetic\
-			--alpha $alpha --distype $type\
-			--method $m $is_kip -tm ${test_method}\
-			"${@:3:99}" >>outputs/synthetic/$fname;
+	for gs in -3 3; do
+		if [[ "$is_kip" == '' ]]
+		then
+			fname="${type}_${test_method}_nop_${gs}.tsv";
+		else
+			fname="${type}_${test_method}_kip_${gs}.tsv";
+		fi
+		python -m experiment_synthetic --header-only >outputs/synthetic/$fname;
+		for alpha in 0.25 0.5 0.75; do
+			for m in ${methods[@]}; do
+				python -m experiment_synthetic\
+				--alpha $alpha --distype $type\
+				--method $m $is_kip -tm ${test_method} -gs ${gs}\
+				>>outputs/synthetic/$fname;
+			done
 		done
 		printf "\\midrule\n" >>outputs/synthetic/$fname;
 	done

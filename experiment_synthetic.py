@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import warnings
@@ -32,6 +33,9 @@ if __name__ == "__main__":
     protected = ["sex"]
     privileged_classes = [['Male']]
 
+    LOG_FORMAT = '%(asctime)s - %(module)s - %(lineno)d - %(levelname)s \n %(message)s'
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+
     # Class shift is 10
     class_shift = args.delta
     if args.distype == 'corr':
@@ -43,10 +47,18 @@ if __name__ == "__main__":
                 'z': [0, 2]},
             'sigmas': {'x1': {0: [5, 5], 1: [5, 5]}, 'z': [1, 1]},
         }
-        # print(dist)
+        """
+        dist = {
+            'mus': {'x1': {
+                0: [0, 0],
+                1: [0, 0]},
+                'z': [0, args.group_shift]},
+            'sigmas': {'x1': {0: [5, 5], 1: [5, 5]}, 'z': [1, 1]},
+        }
+        """
     else:
-        dist = {'mus': {1: np.array([10, 10]),
-                        0: np.array([10 - class_shift, 10 - class_shift])},
+        dist = {'mus': {1: np.array([0 + class_shift, 0 + class_shift + args.group_shift]),
+                        0: np.array([0, 0 + args.group_shift])},
                 'sigmas': [3, 3]}
     alpha = args.alpha
     method = args.method
@@ -54,16 +66,14 @@ if __name__ == "__main__":
         keep_prot = True
     else:
         keep_prot = args.keep_im_prot
-
     kwargs = {
         'protected_attribute_names': ['sex'], 'privileged_group': 'Male',
         'favorable_label': 1, 'classes': [0, 1],
-        'sensitive_groups': ['Female', 'Male'], 'group_shift': 2,
+        'sensitive_groups': ['Female', 'Male'], 'group_shift': args.group_shift,
         'beta': 1, 'dist': dist, 'keep_im_prot': keep_prot,
         'alpha': alpha, 'method': method, 'verbose': False,
         'priv_ic_prob': args.priv_ic_prob, 'unpriv_ic_prob': args.unpriv_ic_prob
     }
-
     estimator = get_estimator(args.estimator, args.reduce)
     keep_prot = args.reduce or (args.estimator == 'pr')
     n_samples = args.n_samples
@@ -75,6 +85,8 @@ if __name__ == "__main__":
         print(get_table_row(is_header=True, variable=variable))
         if args.header_only:
             exit()
+
+    logging.info(kwargs)
     # TODO: ############ Results not matching with notebooks ##############
     train_fd, test_fd = get_synthetic_train_test_split(
         train_random_state=47, test_random_state=41, type=args.distype,
@@ -89,7 +101,7 @@ if __name__ == "__main__":
         estimator, train_fd, test_fd, privileged=None)
 
     row = get_table_row(
-        is_header=False, var_value=(alpha, method), p_perf=p_perf,
-        u_perf=u_perf, m_perf=m_perf, variable=variable)
+        is_header=False, var_value=(alpha, method), p_perf=m_perf,
+        u_perf=m_perf, m_perf=m_perf, variable=variable)
     print(row)
     sys.stdout.flush()

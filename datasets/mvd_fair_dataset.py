@@ -109,7 +109,6 @@ class MVDFairDataset(FairDataset):
         rows = self.R.tocoo().row
         cols = self.R.tocoo().col
         features[rows, cols] = float('nan')
-        logging.info(df.columns)
         df = pd.DataFrame(features, columns=df.columns,
             index=kwargs.get('instance_names', range(len(features))))
         df[label_names[0]] = y.values

@@ -64,4 +64,5 @@ class CCDFairDataset(MVDFairDataset):
         for i in range(n_group):
             formatted_sigmas[i, :, :] += dist['sigmas'][i]
         formatted_dist = {'mu': formatted_mus, 'sigma': formatted_sigmas}
+        logging.info(formatted_dist)
         return formatted_dist

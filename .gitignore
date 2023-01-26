@@ -6,4 +6,4 @@ myvenv/**/*
 **/*.tsv
 **/*.pdf
 **/*.txt
-output/**/*.pkl
+outputs/**/*.pkl

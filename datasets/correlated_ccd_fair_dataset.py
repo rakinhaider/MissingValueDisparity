@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import math
 from .ccd_fair_dataset import CCDFairDataset
@@ -65,4 +67,5 @@ class CorrelatedCCDFairDataset(CCDFairDataset):
                 formatted_sigmas[i, j, :] = [x1_sigma, x2_sigma]
 
         formatted_dist = {'mu': formatted_mus, 'sigma': formatted_sigmas}
+        logging.info(formatted_dist)
         return formatted_dist

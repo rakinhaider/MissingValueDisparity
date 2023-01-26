@@ -47,7 +47,7 @@ class FairDataset(BinaryLabelDataset):
             dist = self._get_default_dist()
         n_unprivileged = kwargs['n_samples']
         n_features = len(dist['mu'][0, 0])
-        logging.info('n_features', n_features)
+        logging.info(n_features)
         alpha = kwargs['alpha']
         beta = kwargs['beta']
         _validate_alpha_beta(alpha, beta, n_unprivileged)
