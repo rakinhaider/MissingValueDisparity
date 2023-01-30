@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import warnings
+from plotter import *
 # Suppresing tensorflow warning
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -34,7 +35,7 @@ if __name__ == "__main__":
     privileged_classes = [['Male']]
 
     LOG_FORMAT = '%(asctime)s - %(module)s - %(lineno)d - %(levelname)s \n %(message)s'
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    logging.basicConfig(level=logging.WARN, format=LOG_FORMAT)
 
     # Class shift is 10
     class_shift = args.delta
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     else:
         dist = {'mus': {1: np.array([0 + class_shift, 0 + class_shift + args.group_shift]),
                         0: np.array([0, 0 + args.group_shift])},
-                'sigmas': [3, 3]}
+                'sigmas': [5, 5]}
     alpha = args.alpha
     method = args.method
     if method == "group_imputer":
@@ -104,4 +105,5 @@ if __name__ == "__main__":
         is_header=False, var_value=(alpha, method), p_perf=m_perf,
         u_perf=m_perf, m_perf=m_perf, variable=variable)
     print(row)
+
     sys.stdout.flush()

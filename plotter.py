@@ -1,12 +1,15 @@
+import logging
 import os
+
+import pandas as pd
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
-from scipy.special import erf
-from utils import get_c123
 import argparse
+from utils import get_parser, get_estimator, get_synthetic_train_test_split, METHOD_SHORTS
 
 
 def set_rcparams(**kwargs):
@@ -25,6 +28,8 @@ def set_rcparams(**kwargs):
         "mathtext.default": 'bf',
         # "figure.figsize": set_size(width, fraction)
     }
+    if kwargs.get('linewidth') is not None:
+        params['lines.linewidth'] = kwargs.get('linewidth')
     if kwargs.get('titlepad') is not None:
         params["axes.titlepad"] = kwargs.get('titlepad')
     if kwargs.get('labelpad') is not None:
@@ -68,9 +73,21 @@ def set_size(width, fraction=1, aspect_ratio='golden'):
     return fig_width_in, fig_height_in
 
 
-def plot_normal(mu, sigma, ax, label=None):
+def plot_normal(mu, sigma, ax, label=None, privileged=None, cls=0):
     x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
-    ax.plot(x, stats.norm.pdf(x, mu, sigma), label=label)
+    if cls == 1:
+        color = '#1f77b4'
+        linestyle = '--'
+    else:
+        color = '#ff7f0e'
+        linestyle = (0, (1, 1))
+    # if privileged == 1:
+    #    linestyle = 'dashed'
+    #else:
+    #    linestyle = 'dotted'
+    label = '+' if cls else '-'
+    ax.plot(x, stats.norm.pdf(x, mu, sigma), linestyle=linestyle,
+            color=color, label=label)
 
 
 def plot_feat_dist(dist, **kwargs):
@@ -80,58 +97,31 @@ def plot_feat_dist(dist, **kwargs):
     f, ax = plt.subplots(2, 2,
         figsize=set_size(width, fraction, aspect_ratio=aspect_ratio)
     )
-    shift_p = 0
-    shift_u = 0
-    if kwargs.get('shift_priv', False) == True:
-        shift_u = kwargs['shift_random']
-    else:
-        shift_p = kwargs.get('shift_random', 0)
-    avg_p = (dist['mu_ps']['p'] + dist['mu_ns']['p']) / 2 + shift_p
-    avg_u = (dist['mu_ps']['u'] + dist['mu_ns']['u']) / 2 + shift_u
-    sigma_p = dist['sigma_ps']['p']
-    sigma_u = dist['sigma_ps']['u']
-    p_range = (min(dist['mu_ps']['p'], dist['mu_ns']['p']) - 3 * sigma_p,
-               max(dist['mu_ps']['p'], dist['mu_ns']['p']) + 3 * sigma_p
-               )
-    u_range = (min(dist['mu_ps']['u'], dist['mu_ns']['u']) - 3 * sigma_u,
-               max(dist['mu_ps']['u'], dist['mu_ns']['u']) + 3 * sigma_u
-               )
 
-    combs = [
-        [
-            [(dist['mu_ps']['p'], dist['mu_ns']['p']), (sigma_p, sigma_p),
-             p_range],
-            [(avg_u, avg_u), (sigma_u, sigma_u), u_range]
-        ],
-        [
-            [(avg_p, avg_p), (sigma_p, sigma_p), p_range],
-            [(dist['mu_ps']['u'], dist['mu_ns']['u']), (sigma_u, sigma_u),
-             u_range]
-        ]
-    ]
+    mus = dist['mus']
+    sigmas = dist['sigmas']
+    range_min = np.min(mus-3*sigmas, axis=1)
+    range_max = np.max(mus+3*sigmas, axis=1)
 
-    # for i, row in enumerate(ax):
-    #     for j, a in enumerate(row):
-    for j, row in enumerate(ax):
-        for i, a in enumerate(row):
-            mus = combs[i][j][0]
-            sigmas = combs[i][j][1]
-            plot_normal(mus[0], sigmas[0], a)
-            plot_normal(mus[1], sigmas[1], a)
-            left, right = combs[i][j][2]
-            a.set_xticks([int(i) for i in np.linspace(left, right, 5)])
-            a.set_yticks([0, 0.1, 0.2])
-            a.set_xlim(left, right)
-            a.set_ylim(-0.01, 0.22)
+    for i, row in enumerate(ax):
+        for j, a in enumerate(row):
+            for l in [0, 1]:
+                plot_normal(mus[i][l][j], sigmas[i][l][j], a)
+                # left, right = range_min[i][]
+                # a.set_xticks([int(i) for i in np.linspace(left, right, 5)])
+                # a.set_yticks([0, 0.1, 0.2])
+                # a.set_xlim(left, right)
+                # a.set_ylim(-0.01, 0.22)
+                print(mus[i][l][j], sigmas[i][l][j], i, j)
 
-    ax[0][0].set_xlabel(r'$x_1$ (Test Score)')
+    ax[0][0].set_xlabel(r'$x_1$')
     ax[0][0].set_ylabel(r'$\mathcal{N}(\mu_1, \sigma_1)$')
-    ax[0][1].set_xlabel(r'$x_1$ (Test Score)')
+    ax[0][1].set_xlabel(r'$x_1$')
     ax[0][1].set_ylabel(r'$\mathcal{N}(\mu_1, \sigma_1)$')
 
-    ax[1][0].set_xlabel(r'$x_2$ (GPA)')
+    ax[1][0].set_xlabel(r'$x_2$')
     ax[1][0].set_ylabel(r'$\mathcal{N}(\mu_2, \sigma_2)$')
-    ax[1][1].set_xlabel(r'$x_2$ (GPA)')
+    ax[1][1].set_xlabel(r'$x_2$')
     ax[1][1].set_ylabel(r'$\mathcal{N}(\mu_2, \sigma_2)$')
 
     ax[0][0].set_title('Privileged')
@@ -141,113 +131,228 @@ def plot_feat_dist(dist, **kwargs):
     # plt.subplots_adjust(wspace=0.25)
 
 
-def plot_erf(sigma_1, sigma_2, delta, alpha):
-    erfs = []
-    start = - 250
-    end = 250
-    for i in range(start, end + 1):
-        erfs.append(erf(i / 100))
+def get_range(dist_table, i, j):
+    mus = [l[j] for l in dist_table[:, :, 0].flatten()]
+    sigmas = [l[j] for l in dist_table[:, :, 1].flatten()]
+    vals = [mu - 3 * sigmas[i] for i, mu in enumerate(mus)]
+    vals += [mu + 3 * sigmas[i] for i, mu in enumerate(mus)]
+    left = int(round(min(vals), 0))
+    right = int(round(max(vals), 0))
+    return left, right
 
-    plt.gca().spines['right'].set_visible(False)
-    plt.gca().spines['top'].set_visible(False)
-    plt.plot([i / 100 for i in range(start, end + 1)], erfs, color='black')
 
-    calpha = np.log(alpha / (1 - alpha))
-    c1, c2, c3 = get_c123(sigma_1, sigma_2, delta)
-    points = [c1, c3, c1 + c2 * calpha, c3 + c2 * calpha, c3 - c2 * calpha,
-              c1 - c2 * calpha]
-    plt.plot(points, [erf(p) for p in points], 'o', color='black')
+def plot_dist_table(dist_table, **kwargs):
+    width = kwargs['width']
+    fraction = kwargs['fraction']
+    aspect_ratio = kwargs['aspect_ratio']
+    f, ax = plt.subplots(2, 2,
+            figsize=set_size(width, fraction, aspect_ratio=aspect_ratio))
+    print(dist_table)
+    # i controls sensitive attribute
+    for i in range(2):
+        # j controls class
+        for j in range(2):
+            mus = dist_table[i][j][0]
+            sigmas = dist_table[i][j][1]
+            plot_normal(float(mus[0]), float(sigmas[0]), ax[i][0],
+                        privileged=i, cls=j)
+            plot_normal(float(mus[1]), float(sigmas[1]), ax[i][1],
+                        privileged=i, cls=j)
 
-    texts = [r'$c_1$', r'$c_3$', r'$c_1+c_2*c_\alpha$', r'$c_3+c_2*c_\alpha$',
-             r'$c_3 - c_2*c_\alpha$', r'$c_1 - c_2*c_\alpha$']
+    for i in range(2):
+        for j in range(2):
+            left, right = get_range(dist_table, j, i)
+            ax[j][i].set_xlim(left, right)
+            ax[j][i].set_xticks(
+                [i for i in range(left, right + 1) if i % 10 == 0])
+            ax[j][i].set_ylim(-0.01, 0.125)
+            # ax[j][i].legend(fontsize=5)
 
-    ax = plt.gca()
+    ax[0][0].set_title(r"$x_1$")
+    ax[1][0].set_title(r"$x_1$")
+    ax[0][1].set_title(r"$x_2$")
+    ax[1][1].set_title(r"$x_2$")
 
-    ax.annotate(texts[0], (points[0] - 0.2, erf(points[0]) + 0.10),
-                rotation=-75)
-    ax.annotate(texts[1], (points[1] - 0.15, erf(points[1]) + 0.1),
-                rotation=-75)
-    ax.annotate(texts[2], (points[2] + 0.02, erf(points[2]) - 1.3),
-                rotation=-75)
-    ax.annotate(texts[3], (points[3] - 0.4, erf(points[3]) + 0.15),
-                rotation=-75)
+    ax[1][0].set_ylabel('Privileged')
+    ax[0][0].set_ylabel('Unprivileged')
 
-    ax.annotate(texts[4], (points[4] - 0.05, erf(points[4]) - 1.3),
-                rotation=-75)
-    ax.annotate(texts[5], (points[5], erf(points[5]) - 1.3),
-                rotation=-75)
-
-    plt.ylim(-1.1, 1.3)
-    plt.xlim(-2.5, 2.5)
-    plt.xlabel('x')
-    plt.ylabel('erf(x)')
-
-    mid_points = [(c1 + c3) / 2, (c1 + c3) / 2 + c2 * calpha,
-                  (c1 + c3) / 2 - c2 * calpha]
-    plt.plot(mid_points, [erf(i) for i in mid_points], 'o', color='black')
-
-    plt.plot([c1 + c2 * calpha, c3 + c2 * calpha],
-             [erf(i) for i in [c1 + c2 * calpha, c3 + c2 * calpha]],
-             color='black')
-    plt.plot([c1 + c2 * calpha, c1 + c2 * calpha],
-             [erf(c1 + c2 * calpha), erf(c3 + c2 * calpha)], color='black')
-    plt.plot([c3 + c2 * calpha, c1 + c2 * calpha],
-             [erf(c3 + c2 * calpha), erf(c3 + c2 * calpha)], color='black')
-
-    plt.plot([c1 - c2 * calpha, c3 - c2 * calpha],
-             [erf(c1 - c2 * calpha), erf(c3 - c2 * calpha)], color='black')
-    plt.plot([c1 - c2 * calpha, c1 - c2 * calpha],
-             [erf(c1 - c2 * calpha), erf(c3 - c2 * calpha)], color='black')
-    plt.plot([c3 - c2 * calpha, c1 - c2 * calpha],
-             [erf(c3 - c2 * calpha), erf(c3 - c2 * calpha)], color='black')
+    # plt.subplots_adjust(wspace=0.25)
     plt.tight_layout()
+
+
+def plot_group_config(group_config, **kwargs):
+    dist_table = np.reshape(group_config, (2, 2, 4))
+    plot_dist_table(dist_table, **kwargs)
+
+
+def get_df_group_config(df, precision=3):
+    df_gc = []
+
+    for s in [0, 1]:
+        for l in [0, 1]:
+            desc = df[((df['sex'] == s) & (df['label'] == l))].describe()
+            mus = desc.loc['mean']
+            sigmas = desc.loc['std']
+            df_gc.append((
+                [round(mus[0], precision), round(mus[1], precision)],
+                [round(sigmas[0], precision), round(sigmas[1], precision)], s,
+                l)
+            )
+    print(*df_gc, sep='\n')
+    return df_gc
 
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--what', choices=['erf', 'featdist'], default='erf')
-    parser.add_argument('--sigma-1', default=2, type=int)
-    parser.add_argument('--sigma-2', default=5, type=int)
-    parser.add_argument('--mu_p_plus', default=13, type=int)
-    parser.add_argument('--mu_u_plus', default=10, type=int)
-    parser.add_argument('--delta', default=10, type=int)
-    parser.add_argument('--alpha', default=0.25, type=float)
-    parser.add_argument('--width', default=239, type=int)
-    parser.add_argument('--fraction', default=0.95, type=float)
-    parser.add_argument('--fontsize', default=10, type=int)
-    parser.add_argument('--filetype', default='pdf', type=str)
+    parser = get_parser()
+    parser.add_argument('--distype', '-dt', default='ds_ccd',
+                        choices=['ds_ccd', 'ccd', 'corr'],
+                        help='Type of disparity')
+    parser.add_argument('--group-shift', '-gs', default=0, type=int)
+    parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
+    parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
+    parser.add_argument('--test-method', '-tm', default='train',
+                        choices=['none', 'train'])
+    parser.add_argument('--width', default=241)
+    parser.add_argument('--fontsize', default=9)
+    parser.add_argument('--log-level', '-ll', default='WARN')
+    parser.add_argument('--what', default='featdist',
+                        choices=['featdist', 'byupic', 'barplot'])
     args = parser.parse_args()
-    # textwidth = 505
-    linewidth = args.width
-    what = args.what
-    out_dir = 'outputs/figures/'
 
-    if what == 'erf':
-        set_rcparams(fontsize=args.fontsize, titlepad=3,
-                     labelpad=1, markersize=4)
+    protected = ["sex"]
+    privileged_classes = [['Male']]
 
-        plt.gcf().set_size_inches(set_size(linewidth, args.fraction, 0.6))
-        plot_erf(args.sigma_1, args.sigma_2, args.delta, args.alpha)
-        fname = 'erf_plot.pdf'
+    LOG_FORMAT = '%(asctime)s - %(module)s - %(lineno)d - %(levelname)s \n %(message)s'
+    logging.basicConfig(level=args.log_level, format=LOG_FORMAT)
 
-    elif what == 'featdist':
-        set_rcparams(fontsize=args.fontsize)
-        mu_p_plus, mu_u_plus, = args.mu_p_plus, args.mu_u_plus
-        mu_p_minus, mu_u_minus = mu_p_plus - args.delta, mu_u_plus - args.delta
-        sigma_p, sigma_u = args.sigma_1, args.sigma_2
-        dist = {
-            'mu_ps': {'p': mu_p_plus, 'u': mu_u_plus},
-            'sigma_ps': {'p': sigma_p, 'u': sigma_u},
-            'mu_ns': {'p': mu_p_minus, 'u': mu_u_minus},
-            'sigma_ns': {'p': sigma_p, 'u': sigma_u}
+    if args.what == 'featdist':
+        # Class shift is 10
+        class_shift = args.delta
+        if args.distype == 'corr':
+            group_shift = args.group_shift
+            dist = {
+                'mus': {'x1': {
+                    0: [0, 0 + group_shift],
+                    1: [0 + class_shift, 0 + group_shift + class_shift]},
+                    'z': [0, 2]},
+                'sigmas': {'x1': {0: [5, 5], 1: [5, 5]}, 'z': [1, 1]},
+            }
+        else:
+            dist = {'mus': {
+                1: np.array(
+                    [0 + class_shift, 0 + class_shift + args.group_shift]),
+                0: np.array([0, 0 + args.group_shift])},
+                'sigmas': [5, 5]}
+        alpha = args.alpha
+        method = 'baseline' if args.test_method == 'none' else 'simple_imputer.mean'
+        kwargs = {
+            'protected_attribute_names': ['sex'], 'privileged_group': 'Male',
+            'favorable_label': 1, 'classes': [0, 1],
+            'sensitive_groups': ['Female', 'Male'],
+            'group_shift': args.group_shift,
+            'beta': 1, 'dist': dist, 'alpha': alpha, 'method': method,
+            'verbose': False, 'priv_ic_prob': args.priv_ic_prob,
+            'unpriv_ic_prob': args.unpriv_ic_prob
         }
-        plot_feat_dist(dist, width=linewidth,
-                       fraction=args.fraction, aspect_ratio=0.7)
-        fname = '{}-{}-{}-{}-{}-{}.{}'.format(
-            dist['mu_ps']['p'], dist['mu_ps']['u'],
-            dist['mu_ns']['p'], dist['mu_ns']['u'],
-            dist['sigma_ps']['p'], dist['sigma_ps']['u'], args.filetype)
+        estimator = get_estimator(args.estimator, args.reduce)
+        keep_prot = args.reduce or (args.estimator == 'pr')
+        n_samples = args.n_samples
+        n_feature = args.n_feature
+        test_method = None if args.test_method == 'none' else args.test_method
 
-    print(plt.gcf().get_size_inches())
-    plt.savefig(out_dir + fname, format=args.filetype)
+        logging.info(kwargs)
+        # TODO: ############ Results not matching with notebooks ##############
+        train_fd, test_fd = get_synthetic_train_test_split(
+            train_random_state=47, test_random_state=41, type=args.distype,
+            n_samples=n_samples, n_features=n_feature,
+            test_method=test_method, **kwargs)
+
+        # textwidth = 505
+        linewidth = args.width
+        out_dir = 'outputs/figures/'
+
+        set_rcparams(fontsize=args.fontsize)
+        if not test_method:
+            group_configs = test_fd.group_configs
+        else:
+            group_configs = get_df_group_config(test_fd.imputed_df)
+
+        print(group_configs)
+        plot_group_config(group_configs, width=args.width,
+                          fraction=0.95, aspect_ratio=.65)
+        fname = '{:s}_{:d}_{:d}_{:s}.pdf'.format(args.distype, args.delta,
+                                                 args.group_shift,
+                                                 args.test_method)
+
+        print(plt.gcf().get_size_inches())
+        plt.savefig(out_dir + fname, format='pdf')
+    elif args.what == 'byupic':
+        fname = 'outputs/synthetic/vary_upic.tsv'
+        splits = []
+        for line in open(fname, 'r'):
+            line = line.replace('$', '')
+            line = line.replace('\\\\\n', '')
+            split = line.split('\t & \t')
+            if len(split) > 2:
+                splits.append(split)
+
+        df = pd.DataFrame(splits[1:], columns=splits[0])
+        types = [float, str, float, float, float, float, float, float]
+        df = df.astype({c: types[i] for i, c in enumerate(df.columns)})
+        print(df)
+
+        pad = 1.2
+        bbox_to_anchor_top = 1.04
+
+        set_rcparams(fontsize=9, linewidth=1)
+        fig, axs = plt.subplots(1, 2,
+                                figsize=set_size(242, .95, 0.45))
+
+        for i, col in enumerate(['FPR_p', 'FPR_u']):
+            axs[i].hlines(y=df.loc[0][col], xmin=0, xmax=1, linestyles='dashed',
+                          label='baseline', color='black')
+            for method in ['drop', 'simple_imputer.mean',
+                           'iterative_imputer.mice', 'knn_imputer']:
+                sub_df = df[df['method'] == method]
+                print(sub_df[col])
+                axs[i].plot([i / 10 for i in range(1, 7)], sub_df[col],
+                            # '-^', markersize=3,
+                            label='{}'.format(METHOD_SHORTS[method]))
+                axs[i].set_xlabel(r'${}$'.format(col))
+
+            axs[i].set_xlim(0, 0.7)
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.figlegend(handles[:5], labels[:5],
+                      bbox_to_anchor=(0.5, bbox_to_anchor_top),
+                      loc='upper center', ncol=5, fontsize='xx-small')
+        plt.tight_layout()
+        plt.savefig('outputs/figures/vary_upic_fpr.pdf', format='pdf',
+                    bbox_inches='tight')
+
+        set_rcparams(fontsize=9)
+        fig, axs = plt.subplots(
+            1, 2, figsize=set_size(242, .95, 0.45))
+
+        for i, col in enumerate(['SR_p', 'SR_u']):
+            axs[i].hlines(y=df.loc[0][col], xmin=0, xmax=1, linestyles='dashed',
+                          label='baseline', color='black')
+            for method in ['drop', 'simple_imputer.mean',
+                           'iterative_imputer.mice', 'knn_imputer']:
+                sub_df = df[df['method'] == method]
+                print(sub_df[col])
+                axs[i].plot([i / 10 for i in range(1, 7)], sub_df[col],
+                            # '-^', markersize=3,
+                            label='{}'.format(METHOD_SHORTS[method]))
+                axs[i].set_xlabel(col)
+
+            axs[i].set_xlim(0, 0.7)
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.figlegend(handles[:5], labels[:5],
+                      bbox_to_anchor=(0.5, bbox_to_anchor_top),
+                      loc='upper center', ncol=5, fontsize='xx-small')
+        plt.tight_layout()
+        plt.savefig('outputs/figures/vary_upic_sr.pdf', format='pdf',
+                    bbox_inches='tight')

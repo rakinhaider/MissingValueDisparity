@@ -1,19 +1,11 @@
-import logging
 import os
 import pickle
 import warnings
-
-import pandas as pd
-
 
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from utils import *
 from datasets.standard_ccd_dataset import StandardCCDDataset
-
-METHOD_SHORTS = {'baseline': 'baseline', 'simple_imputer.mean': 'mean',
-                'simple_imputer.mode': 'mode', 'iterative_imputer.mice': 'mice',
-                'knn_imputer': 'knn'}
 
 
 def save_models(args, mod_to_name_map, fold_id):
@@ -52,7 +44,7 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
                                missing_column_name=kwargs['col'])
     incomplete_df = train.get_incomplete_df(
         protected_attribute_names=train.protected_attribute_names,
-        label_names=train.label_names, instance_names=train.instance_names)
+        label_names=train.label_names, instance_names=std_train.instance_names)
     logging.info(incomplete_df.describe().loc['count'])
     test = StandardCCDDataset(std_test, priv_ic_prob=0, unpriv_ic_prob=0,
                               method='baseline')

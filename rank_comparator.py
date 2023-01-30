@@ -60,7 +60,7 @@ if __name__ == "__main__":
         """
     else:
         # group_shift = args.group_shift
-        group_shift = 2
+        group_shift = 0
         dist = {'mus': {1: np.array([0 + class_shift, 0 + class_shift + group_shift]),
                         0: np.array([0, 0 + group_shift])},
                 'sigmas': [5, 5]}
@@ -85,7 +85,8 @@ if __name__ == "__main__":
 
     # TODO: ############ Results not matching with notebooks ##############
     models = {}
-    for method in ['baseline', 'simple_imputer.mean']:
+    compared_method = 'drop'
+    for method in ['baseline', compared_method]:
         kwargs = {
             'protected_attribute_names': ['sex'], 'privileged_group': 'Male',
             'favorable_label': 1, 'classes': [0, 1],
@@ -147,4 +148,5 @@ if __name__ == "__main__":
                            columns=['proba_less', 'proba_great', 'proba_change',
                                     'rank_less', 'rank_great', 'rank_change'])
 
-    changes.to_csv('pred_changes_{:d}.tsv'.format(group_shift), sep='\t')
+    changes.to_csv('pred_changes_{:d}_{:s}.tsv'.format(
+        group_shift, METHOD_SHORTS.get(compared_method,compared_method)), sep='\t')

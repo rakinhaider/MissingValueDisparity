@@ -38,9 +38,34 @@ elif [ $1 == "std" ]; then
 	exit
 fi
 
+if [ $1 == "estm" ]; then
+	is_kip=''
+	gs=-3
+	estimators=('nb' 'lr' 'pr')
+	is_red=0
+	reduce=0
+	if [ ${is_red} == 1 ]; then
+		reduce='--reduce'
+	fi
+	for e in ${estimators[@]}; do
+		fname="${type}_${test_method}_nop_${gs}_${e}.tsv";
+		python -m experiment_synthetic --header-only >outputs/synthetic/$fname;
+		for alpha in 0.25 0.5 0.75; do
+			for m in ${methods[@]}; do
+				python -m experiment_synthetic\
+				--alpha $alpha --distype $type --estimator ${e}\
+				--method $m $is_kip -tm ${test_method} -gs ${gs}\
+				>>outputs/synthetic/$fname;
+			done
+			printf "\\midrule\n" >>outputs/synthetic/$fname;
+		done
+	done
+fi
+
+
 for is_kip in ''; do
 	echo "Keep protected param:" $is_kip;
-	for gs in -3 3; do
+	for gs in -3 0 3; do
 		if [[ "$is_kip" == '' ]]
 		then
 			fname="${type}_${test_method}_nop_${gs}.tsv";
@@ -55,8 +80,8 @@ for is_kip in ''; do
 				--method $m $is_kip -tm ${test_method} -gs ${gs}\
 				>>outputs/synthetic/$fname;
 			done
+			printf "\\midrule\n" >>outputs/synthetic/$fname;
 		done
-		printf "\\midrule\n" >>outputs/synthetic/$fname;
 	done
 done
 

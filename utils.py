@@ -351,3 +351,12 @@ def KL_divergence(p, q, support=None):
         divs.append(np.sum(pi*np.log2(qi/pi)))
     logging.info(divs)
     return -sum(divs)
+
+
+METHOD_SHORTS = {'baseline': 'baseline',
+                 'drop': 'drop',
+                 'simple_imputer.mean': 'mean',
+                 'simple_imputer.mode': 'mode',
+                 'iterative_imputer.mice': 'mice',
+                 'iterative_imputer.missForest': 'missForest',
+                 'knn_imputer': 'knn'}

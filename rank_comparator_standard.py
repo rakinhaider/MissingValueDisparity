@@ -14,9 +14,8 @@ from utils import *
 
 if __name__ == "__main__":
     parser = get_parser()
-    parser.add_argument('--distype', '-dt', default='ds_ccd',
-                        choices=['ds_ccd', 'ccd', 'corr'],
-                        help='Type of disparity')
+    parser.add_argument('--dataset', '-d', default='pima',
+                        choices=['compas', 'pima'])
     parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
     parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
     parser.add_argument('--group-shift', '-gs', default=0, type=int)
@@ -32,6 +31,7 @@ if __name__ == "__main__":
     parser.add_argument('--test-method', '-tm', default='none',
                         choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')
+    parser.add_argument('--strategy', default=2, type=int)
     args = parser.parse_args()
 
     protected = ["sex"]
@@ -40,32 +40,6 @@ if __name__ == "__main__":
     LOG_FORMAT = '%(asctime)s - %(module)s - %(lineno)d - %(levelname)s \n %(message)s'
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    # Class shift is 10
-    class_shift = args.delta
-    if args.distype == 'corr':
-        group_shift = args.group_shift
-        dist = {
-            'mus': {'x1': {
-                0: [0, 0 + group_shift],
-                1: [0 + class_shift, 0 + group_shift + class_shift]},
-                'z': [0, 2]},
-            'sigmas': {'x1': {0: [5, 5], 1: [5, 5]}, 'z': [1, 1]},
-        }
-        """
-        dist = {
-            'mus': {'x1': {
-                0: [0, 0],
-                1: [0, 0]},
-                'z': [0, args.group_shift]},
-            'sigmas': {'x1': {0: [5, 5], 1: [5, 5]}, 'z': [1, 1]},
-        }
-        """
-    else:
-        # group_shift = args.group_shift
-        group_shift = -2
-        dist = {'mus': {1: np.array([0 + class_shift, 0 + class_shift + group_shift]),
-                        0: np.array([0, 0 + group_shift])},
-                'sigmas': [5, 5]}
     alpha = args.alpha
     method = args.method
     if method == "group_imputer":
@@ -88,25 +62,15 @@ if __name__ == "__main__":
     # TODO: ############ Results not matching with notebooks ##############
     models = {}
     # dataset_name = args.dataset
-    dataset_name = 'pima'
+    dataset_name = args.dataset
     for method in ['baseline', 'simple_imputer.mean']:
-        kwargs = {
-            'protected_attribute_names': ['sex'], 'privileged_group': 'Male',
-            'favorable_label': 1, 'classes': [0, 1],
-            'sensitive_groups': ['Female', 'Male'],
-            'group_shift': group_shift,
-            'beta': 1, 'dist': dist, 'keep_im_prot': keep_prot,
-            'alpha': alpha, 'method': method, 'verbose': False,
-            'priv_ic_prob': args.priv_ic_prob,
-            'unpriv_ic_prob': args.unpriv_ic_prob
-        }
-        logging.info(kwargs)
+        strategy = args.strategy
         data = get_standard_dataset(dataset_name)
 
         std_train, std_test = data.split([0.8], shuffle=True, seed=41)
         train_fd = StandardCCDDataset(std_train, priv_ic_prob=args.priv_ic_prob,
                                       unpriv_ic_prob=args.unpriv_ic_prob,
-                                      method=method, strategy=2)
+                                      method=method, strategy=strategy)
         incomplete_df = train_fd.get_incomplete_df(
             protected_attribute_names=train_fd.protected_attribute_names,
             label_names=train_fd.label_names, instance_names=train_fd.instance_names)
@@ -161,4 +125,4 @@ if __name__ == "__main__":
                            columns=['proba_less', 'proba_great', 'proba_change',
                                     'rank_less', 'rank_great', 'rank_change'])
 
-    changes.to_csv('pred_changes_{:s}.tsv'.format(dataset_name), sep='\t')
+    changes.to_csv('pred_changes_{:s}_{:d}.tsv'.format(dataset_name, strategy), sep='\t')
