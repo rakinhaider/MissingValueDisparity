@@ -3,7 +3,7 @@
 dataset=$1
 test_method=$2
 estimator='nb'
-strategy='3'
+strategy='2'
 
 methods=('baseline' 'drop' 'simple_imputer.mean'
 'iterative_imputer.mice'

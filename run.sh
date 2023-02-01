@@ -42,13 +42,15 @@ if [ $1 == "estm" ]; then
 	is_kip=''
 	gs=-3
 	estimators=('nb' 'lr' 'pr')
+	type='corr'
 	is_red=0
 	reduce=0
+	test_method='train'
 	if [ ${is_red} == 1 ]; then
 		reduce='--reduce'
 	fi
 	for e in ${estimators[@]}; do
-		fname="${type}_${test_method}_nop_${gs}_${e}.tsv";
+		fname=estm/${type}_${test_method}_nop_${gs}_${e}.tsv;
 		python -m experiment_synthetic --header-only >outputs/synthetic/$fname;
 		for alpha in 0.25 0.5 0.75; do
 			for m in ${methods[@]}; do
@@ -60,8 +62,8 @@ if [ $1 == "estm" ]; then
 			printf "\\midrule\n" >>outputs/synthetic/$fname;
 		done
 	done
+	exit
 fi
-
 
 for is_kip in ''; do
 	echo "Keep protected param:" $is_kip;

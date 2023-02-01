@@ -51,9 +51,9 @@ class CorrelatedCCDFairDataset(CCDFairDataset):
                 else:
                     s = 0
                 mu_x1 = dist['mus']['x1'][cls][s]
-                mu_z = dist['mus']['z'][cls]
+                # mu_z = dist['mus']['z'][cls]
                 # TODO: Vary weights of linear combination
-                cur_mus = [mu_x1, mu_x1 + 2 * mu_z]
+                cur_mus = [mu_x1, mu_x1 + 4 * cls]
                 formatted_mus[s][cls] = cur_mus
         formatted_mus = np.array(formatted_mus)
         formatted_sigmas = np.zeros((n_group, n_class, 2))
@@ -62,8 +62,8 @@ class CorrelatedCCDFairDataset(CCDFairDataset):
         for i in range(n_group):
             for j in range(n_class):
                 x1_sigma = dist['sigmas']['x1'][j][i]
-                z_sigma = dist['sigmas']['z'][j]
-                x2_sigma = math.sqrt(x1_sigma ** 2 + 2 * z_sigma ** 2)
+                # z_sigma = dist['sigmas']['z'][j]
+                x2_sigma = math.sqrt(x1_sigma ** 2)
                 formatted_sigmas[i, j, :] = [x1_sigma, x2_sigma]
 
         formatted_dist = {'mu': formatted_mus, 'sigma': formatted_sigmas}

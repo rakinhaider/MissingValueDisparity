@@ -38,7 +38,7 @@ if __name__ == "__main__":
     privileged_classes = [['Male']]
 
     LOG_FORMAT = '%(asctime)s - %(module)s - %(lineno)d - %(levelname)s \n %(message)s'
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    logging.basicConfig(level=logging.ERROR, format=LOG_FORMAT)
 
     alpha = args.alpha
     method = args.method
@@ -87,12 +87,6 @@ if __name__ == "__main__":
 
         models[method] = dict(zip(['pmod', 'umod', 'mod'], [pmod, umod, mod]))
 
-        row = get_table_row(
-            is_header=False, var_value=(alpha, method), p_perf=m_perf,
-            u_perf=m_perf, m_perf=m_perf, variable=variable)
-        print(row)
-        sys.stdout.flush()
-
     probas = []
     test_x, test_y = get_xy(test_fd, keep_protected=True)
     model_features = test_x.columns[:-1]
@@ -102,26 +96,42 @@ if __name__ == "__main__":
         logging.info(mod.theta_)
         logging.info(mod.var_)
         pred_proba = mod.predict_proba(test_x[model_features])
-        test_x[method+"_proba"] = pred_proba[:, 1]
+        test_x[method+"_proba"] = pred_proba[:, int(data.favorable_label)]
         test_x[method+"_rank"] = test_x[method+"_proba"].rank()
 
     logging.info(test_x.columns[:-4])
     test_x.columns = list(test_x.columns[:-4]) + ['base_proba', 'base_rank', 'mean_proba', 'mean_rank']
     logging.info(test_x.columns)
     test_x.to_csv('rank_{}.tsv'.format(dataset_name), sep='\t')
-    print(train_fd.protected_attribute_names + ['label'])
+    # print(train_fd.protected_attribute_names + ['label'])
     grouped = test_x.groupby(by=train_fd.protected_attribute_names + ['label'])
-    stats = []
+    stats = {}
     for tup, grp in grouped:
-        print(tup)
-        print(grp.describe())
+        # print(tup)
+        # print(grp.describe())
         proba_comp = grp['mean_proba'] - grp['base_proba']
         rank_comp = grp['mean_rank'] - grp['base_rank']
-        stats.append([(proba_comp < 0).sum(), (proba_comp >= 0).sum(), proba_comp.sum(),
-                      (rank_comp < 0).sum(), (rank_comp >= 0).sum(), rank_comp.sum()])
+        print(tup)
+        print(*[(p, r) for p, r in zip(proba_comp.values, rank_comp.values)],
+              sep='\n')
+        stat = [(proba_comp < 0).sum() * 100,
+                (proba_comp > 0).sum() * 100, proba_comp.sum(),
+                (rank_comp < 0).sum() * 100,
+                (rank_comp > 0).sum() * 100, rank_comp.sum()]
+        stat = [s / len(grp) for s in stat]
+        tup = ('u' if tup[0] == 0 else 'p',
+               '+' if tup[1] == train_fd.favorable_label else '-')
+        stats[tup] = stat
+        stat_str = list(tup)
+        stat_str += ["{:.2f}".format(stat[i]) for i in [0, 1]]
+        stat_str += ["{:.2E}".format(stat[2])]
+        stat_str += ["{:.2f}".format(stat[i]) for i in [3, 4]]
+        stat_str += ["{:.2f}".format(stat[5])]
+        print('\t & \t'.join(stat_str) + '\\\\')
+
 
     pd.set_option('display.max_columns', None)
-    changes = pd.DataFrame(stats, index=[(0, 0), (0, 1), (1, 0), (1, 1)],
+    changes = pd.DataFrame(stats.values(), index=stats.keys(),
                            columns=['proba_less', 'proba_great', 'proba_change',
                                     'rank_less', 'rank_great', 'rank_change'])
 
