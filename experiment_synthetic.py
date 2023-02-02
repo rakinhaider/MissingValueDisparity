@@ -21,12 +21,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help='Keep protected attribute in imputation')
     parser.add_argument('--keep-y', '-ky', default=False, action='store_true')
-    parser.add_argument('--method', default='simple_imputer.mean',
-                        choices=['baseline', 'drop', 'simple_imputer.mean',
-                                 'iterative_imputer.mice',
-                                 'iterative_imputer.missForest', 'knn_imputer',
-                                 'group_imputer'])
-    parser.add_argument('--test-method', '-tm', default='train',
+    parser.add_argument('--method', default='mean',
+                        choices=['baseline', 'drop', 'mean',
+                                 'mice', 'missForest', 'knn'])
+    parser.add_argument('--test-method', '-tm', default='none',
                         choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')
     args = parser.parse_args()
@@ -54,7 +52,7 @@ if __name__ == "__main__":
                         0: np.array([0, 0 + args.group_shift])},
                 'sigmas': [5, 5]}
     alpha = args.alpha
-    method = args.method
+    method = METHOD_SHORT_TO_FULL[args.method]
     if method == "group_imputer":
         keep_prot = True
     else:
@@ -73,7 +71,7 @@ if __name__ == "__main__":
     n_feature = args.n_feature
     test_method = None if args.test_method == 'none' else args.test_method
 
-    variable = ('alpha', 'method')
+    variable = ('method')
     if args.print_header or args.header_only:
         print(get_table_row(is_header=True, variable=variable))
         if args.header_only:
@@ -94,7 +92,7 @@ if __name__ == "__main__":
         estimator, train_fd, test_fd, privileged=None)
 
     row = get_table_row(
-        is_header=False, var_value=(alpha, method), p_perf=m_perf,
+        is_header=False, var_value=(args.method), p_perf=m_perf,
         u_perf=m_perf, m_perf=m_perf, variable=variable)
     print(row)
 

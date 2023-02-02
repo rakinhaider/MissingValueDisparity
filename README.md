@@ -60,13 +60,16 @@ and put it in **data/raw/compas/** inside the aif360 folder. We provide
 by replacing *<aif360-folder>* with the aif360 folder location.
 
 ```bash
-python3 download.py --aif360-folder <aif360-folder>
+python -m download --aif360-folder <aif360-folder>
 ```
 In my case it was,
 ```bash
-python3 download.py --aif360-folder myvenv/lib/python3.8/site-packages/aif360/
+python -m download --aif360-folder myvenv/lib/python3.8/site-packages/aif360/
 ```
-
+Now download the PIMA dataset with the following command.
+```bash
+python -m download --dataset pima
+```
 
 ### Executing program
 

@@ -10,13 +10,15 @@ from aif360.algorithms.preprocessing.optim_preproc_helpers.data_preproc_function
 from aif360.datasets.bank_dataset import BankDataset
 from aif360.datasets.german_dataset import GermanDataset
 from aif360.datasets.adult_dataset import AdultDataset
+from datasets import PimaDataset
 
 if __name__ == "__main__":
     # data = load_preproc_data_compas()
     # data = BankDataset()
     # data = GermanDataset()
-    data = AdultDataset()
-    dataset_name = 'adult'
+    # data = AdultDataset()
+    data = PimaDataset()
+    dataset_name = 'pima'
     train, test = data.split([0.8], shuffle=True, seed=47)
 
     x, y = get_xy(train, keep_protected=False)

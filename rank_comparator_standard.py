@@ -24,10 +24,8 @@ if __name__ == "__main__":
                         help='Keep protected attribute in imputation')
     parser.add_argument('--keep-y', '-ky', default=False, action='store_true')
     parser.add_argument('--method', default='simple_imputer.mean',
-                        choices=['baseline', 'drop', 'simple_imputer.mean',
-                                 'iterative_imputer.mice',
-                                 'iterative_imputer.missForest', 'knn_imputer',
-                                 'group_imputer'])
+                        choices=['baseline', 'drop', 'mean',
+                                 'mice', 'missForest', 'knn'])
     parser.add_argument('--test-method', '-tm', default='none',
                         choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')

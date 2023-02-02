@@ -12,7 +12,7 @@ from utils import *
 
 if __name__ == "__main__":
     parser = get_parser()
-    parser.add_argument('--distype', '-dt', default='ds_ccd',
+    parser.add_argument('--distype', '-dt', default='ccd',
                         choices=['ds_ccd', 'ccd', 'corr'],
                         help='Type of disparity')
     parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
@@ -22,11 +22,9 @@ if __name__ == "__main__":
                         action='store_true',
                         help='Keep protected attribute in imputation')
     parser.add_argument('--keep-y', '-ky', default=False, action='store_true')
-    parser.add_argument('--method', default='simple_imputer.mean',
-                        choices=['baseline', 'drop', 'simple_imputer.mean',
-                                 'iterative_imputer.mice',
-                                 'iterative_imputer.missForest', 'knn_imputer',
-                                 'group_imputer'])
+    parser.add_argument('--method', default='mean',
+                        choices=['baseline', 'drop', 'mean',
+                                 'mice', 'missForest', 'knn'])
     parser.add_argument('--test-method', '-tm', default='none',
                         choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')
@@ -83,15 +81,16 @@ if __name__ == "__main__":
             exit()
 
     models = {}
-    compared_method = 'knn_imputer'
-    for method in ['baseline', compared_method]:
+    # compared_method = 'knn_imputer'
+    method_full = METHOD_SHORT_TO_FULL[args.method]
+    for m in ['baseline', method_full]:
         kwargs = {
             'protected_attribute_names': ['sex'], 'privileged_group': 'Male',
             'favorable_label': 1, 'classes': [0, 1],
             'sensitive_groups': ['Female', 'Male'],
             'group_shift': group_shift,
             'beta': 1, 'dist': dist, 'keep_im_prot': keep_prot,
-            'alpha': alpha, 'method': method, 'verbose': False,
+            'alpha': alpha, 'method': m, 'verbose': False,
             'priv_ic_prob': args.priv_ic_prob,
             'unpriv_ic_prob': args.unpriv_ic_prob
         }
@@ -104,7 +103,7 @@ if __name__ == "__main__":
         mod, _ = get_groupwise_performance(
             estimator, train_fd, test_fd, privileged=None)
 
-        models[method] = mod
+        models[m] = mod
 
     probas = []
     test_x, test_y = get_xy(test_fd, keep_protected=True)
@@ -133,9 +132,10 @@ if __name__ == "__main__":
                 (rank_comp > 0).sum() * 100, rank_comp.sum()]
         stat = [s / len(grp) for s in stat]
         stats[tup] = stat
-        stat_str = ['u' if tup[0] == 0 else 'p', '-' if tup[1] == 0 else '+']
+        stat_str = ['({}, {})'.format('u' if tup[0] == 0 else 'p',
+                                      '-' if tup[1] == 0 else '+')]
         stat_str += ["{:.2f}".format(stat[i]) for i in [0, 1]]
-        stat_str += ["{:.2E}".format(stat[2])]
+        stat_str += ["{:.1e}".format(stat[2])]
         stat_str += ["{:.2f}".format(stat[i]) for i in [3, 4]]
         stat_str += ["{:.2f}".format(stat[5])]
         print('\t & \t'.join(stat_str) + '\\\\')
@@ -147,4 +147,4 @@ if __name__ == "__main__":
                  'rank_less', 'rank_great', 'rank_change'])
 
     changes.to_csv('pred_changes_{:d}_{:s}.tsv'.format(
-        group_shift, METHOD_SHORTS.get(compared_method, compared_method)), sep='\t')
+        group_shift, args.method), sep='\t')

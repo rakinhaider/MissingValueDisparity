@@ -360,3 +360,11 @@ METHOD_SHORTS = {'baseline': 'baseline',
                  'iterative_imputer.mice': 'mice',
                  'iterative_imputer.missForest': 'missForest',
                  'knn_imputer': 'knn'}
+
+METHOD_SHORT_TO_FULL = {'baseline': 'baseline',
+                        'drop': 'drop',
+                        'mean': 'simple_imputer.mean',
+                        'mode': 'simple_imputer.mode',
+                        'mice': 'iterative_imputer.mice',
+                        'missForest': 'iterative_imputer.missForest',
+                        'knn': 'knn_imputer'}
