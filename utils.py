@@ -35,7 +35,7 @@ def get_parser():
     parser.add_argument('--te-rs', default=41, type=int,
                         help='Test Random Seed')
     parser.add_argument('--estimator', default='nb',
-                        choices=['nb', 'lr', 'svm', 'dt', 'pr'],
+                        choices=['nb', 'lr', 'svm', 'dt', 'pr', 'cat_nb'],
                         help='Type of estimator')
     parser.add_argument('--reduce', default=False, action='store_true')
     parser.add_argument('--print-header', default=False, action='store_true')

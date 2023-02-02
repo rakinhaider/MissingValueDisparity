@@ -101,22 +101,17 @@ if __name__ == "__main__":
             n_samples=10000, n_features=n_feature,
             test_method=test_method, **kwargs)
 
-
-        pmod, p_perf = get_groupwise_performance(
-            estimator, train_fd, test_fd, privileged=True)
-        umod, u_perf = get_groupwise_performance(
-            estimator, train_fd, test_fd, privileged=False)
-        mod, m_perf = get_groupwise_performance(
+        mod, _ = get_groupwise_performance(
             estimator, train_fd, test_fd, privileged=None)
 
-        models[method] = dict(zip(['pmod', 'umod', 'mod'], [pmod, umod, mod]))
+        models[method] = mod
 
     probas = []
     test_x, test_y = get_xy(test_fd, keep_protected=True)
     model_features = test_x.columns[:-1]
     test_x['label'] = test_y
     for method in models.keys():
-        mod = models[method]['mod']
+        mod = models[method]
         logging.info(mod.theta_)
         logging.info(mod.var_)
         pred_proba = mod.predict_proba(test_x[model_features])

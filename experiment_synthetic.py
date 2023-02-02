@@ -48,17 +48,9 @@ if __name__ == "__main__":
                 'z': [0, 2]},
             'sigmas': {'x1': {0: [5, 5], 1: [5, 5]}, 'z': [1, 1]},
         }
-        """
-        dist = {
-            'mus': {'x1': {
-                0: [0, 0],
-                1: [0, 0]},
-                'z': [0, args.group_shift]},
-            'sigmas': {'x1': {0: [5, 5], 1: [5, 5]}, 'z': [1, 1]},
-        }
-        """
     else:
-        dist = {'mus': {1: np.array([0 + class_shift, 0 + class_shift + args.group_shift]),
+        dist = {'mus': {1: np.array([0 + class_shift,
+                                     0 + class_shift + args.group_shift]),
                         0: np.array([0, 0 + args.group_shift])},
                 'sigmas': [5, 5]}
     alpha = args.alpha
@@ -88,7 +80,7 @@ if __name__ == "__main__":
             exit()
 
     logging.info(kwargs)
-    # TODO: ############ Results not matching with notebooks ##############
+
     train_fd, test_fd = get_synthetic_train_test_split(
         train_random_state=47, test_random_state=41, type=args.distype,
         n_samples=n_samples, n_features=n_feature,

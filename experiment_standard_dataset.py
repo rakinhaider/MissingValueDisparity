@@ -99,14 +99,15 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', choices=['compas', 'bank', 'german', 'adult', 'pima'])
-    parser.add_argument('--print-header', default=False, action='store_true')
+    parser.add_argument('--dataset', '-dt',
+                        choices=['compas', 'bank', 'german', 'adult', 'pima'])
+    parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
+    parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
+
     parser.add_argument('--method', default='simple_imputer.mean',
                         choices=['baseline', 'drop', 'simple_imputer.mean',
                                  'simple_imputer.mode', 'iterative_imputer.mice',
                                  'iterative_imputer.missForest', 'knn_imputer'])
-    parser.add_argument('--estimator', '-e', default='cat_nb',
-                        choices=['cat_nb', 'nb', 'lr', 'svm', 'pr', 'dt'])
     parser.add_argument('--reduce', '-r', action='store_true', default=False)
     parser.add_argument('--calibrate', '-c', default=None,
                         choices=['sigmoid', 'isotonic'])
@@ -115,9 +116,6 @@ if __name__ == "__main__":
     parser.add_argument('--strategy', '-s', type=int, default=0)
 
     parser.add_argument('--header-only', default=False, action='store_true')
-
-    parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
-    parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
 
     parser.add_argument('--random-seed', default=41, type=int)
     parser.add_argument('--log-level', '-ll', default='ERROR')
