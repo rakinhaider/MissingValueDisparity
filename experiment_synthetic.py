@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 import warnings
-from plotter import *
+
 # Suppresing tensorflow warning
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
