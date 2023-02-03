@@ -1,7 +1,6 @@
 #!/bin/bash
 
 dataset=$1
-test_method=$2
 estimator='nb'
 strategy='2'
 
@@ -12,7 +11,7 @@ is_reduce=0
 estimators=('nb' 'lr' 'pr')
 
 for estimator in ${estimators[@]}; do
-	fname=${dataset}_${test_method}_${estimator}_${strategy}_${is_reduce}.tsv
+	fname=${dataset}_${estimator}_${strategy}_${is_reduce}.tsv
 	python -m experiment_standard_dataset --header-only >outputs/standard/${dataset}/$fname;
 
 	reduce_cmd='';

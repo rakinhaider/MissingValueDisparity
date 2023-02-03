@@ -298,7 +298,7 @@ if __name__ == "__main__":
                 splits.append(split)
 
         df = pd.DataFrame(splits[1:], columns=splits[0])
-        types = [float, str, float, float, float, float, float, float]
+        types = [str, float, float, float, float, float, float]
         df = df.astype({c: types[i] for i, c in enumerate(df.columns)})
         print(df)
 
@@ -312,13 +312,13 @@ if __name__ == "__main__":
         for i, col in enumerate(['FPR_p', 'FPR_u']):
             axs[i].hlines(y=df.loc[0][col], xmin=0, xmax=1, linestyles='dashed',
                           label='baseline', color='black')
-            for method in ['drop', 'simple_imputer.mean',
-                           'iterative_imputer.mice', 'knn_imputer']:
+            for method in ['drop', 'mean',
+                           'mice', 'knn']:
                 sub_df = df[df['method'] == method]
                 print(sub_df[col])
                 axs[i].plot([i / 10 for i in range(1, 7)], sub_df[col],
                             # '-^', markersize=3,
-                            label='{}'.format(METHOD_SHORTS[method]))
+                            label='{}'.format(method))
                 axs[i].set_xlabel(r'${}$'.format(col))
 
             axs[i].set_xlim(0, 0.7)
@@ -338,13 +338,13 @@ if __name__ == "__main__":
         for i, col in enumerate(['SR_p', 'SR_u']):
             axs[i].hlines(y=df.loc[0][col], xmin=0, xmax=1, linestyles='dashed',
                           label='baseline', color='black')
-            for method in ['drop', 'simple_imputer.mean',
-                           'iterative_imputer.mice', 'knn_imputer']:
+            for method in ['drop', 'mean',
+                           'mice', 'knn']:
                 sub_df = df[df['method'] == method]
                 print(sub_df[col])
                 axs[i].plot([i / 10 for i in range(1, 7)], sub_df[col],
                             # '-^', markersize=3,
-                            label='{}'.format(METHOD_SHORTS[method]))
+                            label='{}'.format(method))
                 axs[i].set_xlabel(col)
 
             axs[i].set_xlim(0, 0.7)

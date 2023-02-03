@@ -17,7 +17,8 @@ def save_models(args, mod_to_name_map, fold_id):
         model_fname = '{:s}/{:s}_{:s}_{:s}_{:s}_{:.2f}_{:.2f}_{:s}_{:d}_' \
                       '{:d}_{:d}_{}.pkl'.format(
             out_dir, mod_name, args.dataset, args.estimator,
-            METHOD_SHORTS[args.method], args.unpriv_ic_prob, args.priv_ic_prob,
+            METHOD_SHORTS.get(args.method, args.method),
+            args.unpriv_ic_prob, args.priv_ic_prob,
             args.calibrate if args.calibrate else 'None', args.strategy,
             1 if args.reduce else 0, 1 if args.xvalid else 0, fold_id
         )
@@ -29,7 +30,8 @@ def save_probas(args, proba, fold_id):
     os.makedirs(out_dir, exist_ok=True)
     pd.DataFrame(proba, columns=[0, 1]).to_csv(
         '{:s}/{:s}_{:s}_{:s}_{:.2f}_{:.2f}_{:s}_{:d}_{:d}_{:d}_{}.tsv'.format(
-            out_dir, args.dataset, args.estimator, METHOD_SHORTS[args.method],
+            out_dir, args.dataset, args.estimator,
+            METHOD_SHORTS.get(args.method, args.method),
             args.unpriv_ic_prob, args.priv_ic_prob,
             args.calibrate if args.calibrate else 'None', args.strategy,
             1 if args.reduce else 0, 1 if args.xvalid else 0, fold_id
@@ -40,7 +42,8 @@ def save_probas(args, proba, fold_id):
 def experiment(std_train, std_test, args, fold_id=None, **kwargs):
     train = StandardCCDDataset(std_train, priv_ic_prob=args.priv_ic_prob,
                                unpriv_ic_prob=args.unpriv_ic_prob,
-                               method=args.method, strategy=args.strategy,
+                               method=METHOD_SHORT_TO_FULL[args.method],
+                               strategy=args.strategy,
                                missing_column_name=kwargs['col'])
     incomplete_df = train.get_incomplete_df(
         protected_attribute_names=train.protected_attribute_names,
@@ -84,11 +87,13 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
     # logging.info(u_to_mod)
 
     if args.strategy == 1:
-        var_val = (args.dataset, col, METHOD_SHORTS[args.method],
+        var_val = (args.dataset, col, args.method,
                    args.unpriv_ic_prob, args.priv_ic_prob, fold_id)
     else:
-        var_val = (args.dataset, METHOD_SHORTS[args.method],
-                   args.unpriv_ic_prob, args.priv_ic_prob, fold_id)
+        # var_val = (args.dataset, args.method,
+        #            args.unpriv_ic_prob, args.priv_ic_prob, fold_id)
+        var_val = (args.method)
+
     row = get_table_row(is_header=False, p_perf=m_perf, u_perf=m_perf,
                         m_perf=m_perf, variable=variable,
                         var_value=var_val)
@@ -104,25 +109,26 @@ if __name__ == "__main__":
     parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
     parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
 
-    parser.add_argument('--method', default='simple_imputer.mean',
-                        choices=['baseline', 'drop', 'simple_imputer.mean',
-                                 'simple_imputer.mode', 'iterative_imputer.mice',
-                                 'iterative_imputer.missForest', 'knn_imputer'])
+    parser.add_argument('--method', default='mean',
+                        choices=['baseline', 'drop', 'mean',
+                                 'mode', 'mice', 'missForest', 'knn'])
     parser.add_argument('--reduce', '-r', action='store_true', default=False)
     parser.add_argument('--calibrate', '-c', default=None,
                         choices=['sigmoid', 'isotonic'])
     parser.add_argument('--calibrate-cv', '-ccv', type=int, default=10)
     parser.add_argument('--xvalid', '-x', default=False, action='store_true')
     parser.add_argument('--strategy', '-s', type=int, default=0)
-
+    parser.add_argument('--estimator', '-e', default='cat_nb',
+                        choices=['cat_nb', 'nb', 'lr', 'svm', 'pr', 'dt'])
     parser.add_argument('--header-only', default=False, action='store_true')
+    parser.add_argument('--print-header', default=False, action='store_true')
 
     parser.add_argument('--random-seed', default=41, type=int)
     parser.add_argument('--log-level', '-ll', default='ERROR')
 
     args = parser.parse_args()
     args.reduce = False
-    method = args.method
+    method = METHOD_SHORT_TO_FULL[args.method]
     estimator = get_estimator(args.estimator, False)
     keep_prot = args.reduce or (args.estimator == 'pr')
     # keep_prot = False
@@ -134,9 +140,9 @@ if __name__ == "__main__":
     logging.basicConfig(level=level, format=LOG_FORMAT)
 
     if args.strategy == 1:
-        variable = ('dataset', 'col', 'method', 'upic', 'pic', 'fold')
+        variable = ('col', 'method')
     else:
-        variable = ('dataset', 'method', 'upic', 'pic', 'fold')
+        variable = ('method')
     if args.print_header or args.header_only:
         print(get_table_row(is_header=True, variable=variable))
         if args.header_only:

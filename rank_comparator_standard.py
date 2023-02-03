@@ -23,7 +23,7 @@ if __name__ == "__main__":
                         action='store_true',
                         help='Keep protected attribute in imputation')
     parser.add_argument('--keep-y', '-ky', default=False, action='store_true')
-    parser.add_argument('--method', default='simple_imputer.mean',
+    parser.add_argument('--method', default='mean',
                         choices=['baseline', 'drop', 'mean',
                                  'mice', 'missForest', 'knn'])
     parser.add_argument('--test-method', '-tm', default='none',
@@ -61,7 +61,8 @@ if __name__ == "__main__":
     models = {}
     # dataset_name = args.dataset
     dataset_name = args.dataset
-    for method in ['baseline', 'simple_imputer.mean']:
+    compare_method = METHOD_SHORT_TO_FULL[args.method]
+    for method in ['baseline', compare_method]:
         strategy = args.strategy
         data = get_standard_dataset(dataset_name)
 
@@ -105,9 +106,6 @@ if __name__ == "__main__":
         # print(grp.describe())
         proba_comp = grp['mean_proba'] - grp['base_proba']
         rank_comp = grp['mean_rank'] - grp['base_rank']
-        print(tup)
-        print(*[(p, r) for p, r in zip(proba_comp.values, rank_comp.values)],
-              sep='\n')
         stat = [(proba_comp < 0).sum() * 100,
                 (proba_comp > 0).sum() * 100, proba_comp.sum(),
                 (rank_comp < 0).sum() * 100,
@@ -116,9 +114,9 @@ if __name__ == "__main__":
         tup = ('u' if tup[0] == 0 else 'p',
                '+' if tup[1] == train_fd.favorable_label else '-')
         stats[tup] = stat
-        stat_str = list(tup)
+        stat_str = ['({}, {})'.format(tup[0], tup[1])]
         stat_str += ["{:.2f}".format(stat[i]) for i in [0, 1]]
-        stat_str += ["{:.2E}".format(stat[2])]
+        stat_str += ["{:.1e}".format(stat[2])]
         stat_str += ["{:.2f}".format(stat[i]) for i in [3, 4]]
         stat_str += ["{:.2f}".format(stat[5])]
         print('\t & \t'.join(stat_str) + '\\\\')

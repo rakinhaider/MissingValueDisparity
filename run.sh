@@ -45,3 +45,33 @@ missing value in both train and test samples were imputed."
 for method in baseline mean mice knn; do
 	python -m experiment_synthetic -dt corr --method ${method} -gs -3 -tm train
 done
+
+echo "Table 8: Changes in positive prediction probabilities and
+rankings of privileged and unprivileged group of COMPAS
+dataset after mean imputation. Missing values were introduced using strategy 1."
+python -m rank_comparator_standard -d compas --strategy 2
+
+echo "Table 9: Changes in positive prediction probabilities and
+rankings of privileged and unprivileged group of PIMA
+dataset after mean imputation. Missing values were introduced using strategy 1."
+python -m rank_comparator_standard -d pima --strategy 2
+
+echo "Table 10: Group-wise performance of NBC classifier after
+each missing value handling mechanism on PIMA dataset."
+for estimator in nb pr; do
+	echo 'Classifier' estimator
+	for method in baseline mean mice knn; do
+		python -m experiment_standard_dataset\
+			  --dataset pima --method ${method}\
+			  --estimator ${estimator} --strategy 3\
+			  --priv-ic-prob 0.1 --unpriv-ic-prob 0.4;
+	done
+done
+echo 'Classifier' RBC
+for method in baseline mean mice knn; do
+	python -m experiment_standard_dataset\
+		  --dataset pima --method ${method}\
+		  --estimator lr --reduce --strategy 3\
+		  --priv-ic-prob 0.1 --unpriv-ic-prob 0.4;
+done
+

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-methods=('simple_imputer.mean' 'iterative_imputer.mice' 'knn_imputer')
+methods=('mean' 'mice' 'knn')
 estimators=('nb' 'lr' 'dt' 'pr')
 datasets=('compas' 'bank')
 xvalid=''
@@ -9,7 +9,7 @@ logging='-ll DEBUG'
 if [ $1 == "syn" ]; then
 	fname=outputs/synthetic/vary_upic.tsv;
 	python -m experiment_synthetic --header-only >$fname;
-	methods=('drop' 'simple_imputer.mean' 'iterative_imputer.mice' 'knn_imputer')
+	methods=('drop' 'mean' 'mice' 'knn')
 	alpha=0.5
 	python -m experiment_synthetic\
 		--alpha $alpha --distype corr\
