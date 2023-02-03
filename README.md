@@ -81,10 +81,12 @@ chmod +x run.sh
 ```
 
 * You can also run the script individually to obtain the results.
-For example, the following command will output model performances
-for less separable unprivileged group with 2 attributes.
+For example,
 ```bash
-python3 -m with_resource_constraints
+python3 -m rank_comparator --help
+python3 -m rank_comparator_standard --help
+python3 -m experiment_synthetic --help
+python3 -m experiment_standard_dataset --help
 ```
 ## Help
 

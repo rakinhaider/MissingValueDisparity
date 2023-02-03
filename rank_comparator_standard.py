@@ -2,13 +2,12 @@ import logging
 import os
 import sys
 import warnings
-# Suppresing tensorflow warning
-import pandas as pd
-
-from datasets import StandardCCDDataset
-
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import pandas as pd
+from datasets import StandardCCDDataset
+
 
 from utils import *
 

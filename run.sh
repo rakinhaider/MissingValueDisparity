@@ -20,7 +20,7 @@ echo "Table 4: Changes in positive prediction probabilities and
 rankings of non-identically distributed (𝛿𝑠 > 0) privileged
 and unprivileged group after mean imputation."
 
-python -m rank_comparator -dt ccd --method mean -gs 3 --method knn
+python -m rank_comparator -dt ccd --method mean -gs 3
 
 echo "Table 5: Group-wise performance of NBC classifier after each
 missing value handling mechanism when the groups are
@@ -59,7 +59,7 @@ python -m rank_comparator_standard -d pima --strategy 2
 echo "Table 10: Group-wise performance of NBC classifier after
 each missing value handling mechanism on PIMA dataset."
 for estimator in nb pr; do
-	echo 'Classifier' estimator
+	echo 'Classifier' ${estimator}
 	for method in baseline mean mice knn; do
 		python -m experiment_standard_dataset\
 			  --dataset pima --method ${method}\
