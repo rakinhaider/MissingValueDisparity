@@ -1,3 +1,5 @@
+#!/bin/bash
+
 echo "Table 1: Changes in positive prediction probabilities and
 rankings of identically distributed privileged and unpriv-
 ileged group when moving to 𝜃′ from 𝜃."
