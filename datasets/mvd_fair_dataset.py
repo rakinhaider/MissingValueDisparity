@@ -46,7 +46,7 @@ class MVDFairDataset(FairDataset):
             label_names=label_names,
             instance_names=kwargs.get('instance_names', None)
         )
-        logging.info(incomplete_df.describe().loc['count'])
+        logging.info(f'incomplete_df_description {incomplete_df.describe().loc["count"]}')
         if kwargs.get('imputer', None):
             self.imputer = kwargs['imputer']
             if kwargs.get('keep_im_prot', False):

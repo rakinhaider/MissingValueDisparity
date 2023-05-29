@@ -28,7 +28,7 @@ class CCDFairDataset(MVDFairDataset):
             get('protected_attribute_names', ['sex'])
         selector = [protected_attribute_names[0]] + [label_name]
         r = sparse.csr_matrix(np.zeros((n_samples, n_features)))
-        for grp, count in self.complete_df[selector].value_counts().iteritems():
+        for grp, count in self.complete_df[selector].value_counts().items():
             if grp[0] == 1:
                 n_incomplete = int(count * self.priv_ic_prob)
             else:
