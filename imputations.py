@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import SimpleImputer, IterativeImputer, KNNImputer
+from fancyimpute import SoftImpute, NuclearNormMinimization
 from missing_disparity.fairimputer.group_mean_imputer import GroupImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
@@ -51,6 +52,10 @@ def impute(df, method='drop', label_names=['label'],
             imputer = GroupImputer(group_cols=protected_attribute_names,
                                    target=feature_names,
                                    metric='mean')
+        elif method == 'softimpute':
+            imputer = SoftImpute(verbose=False)
+        elif method == 'nuclearnorm':
+            imputer = NuclearNormMinimization()
         else:
             raise ValueError("Imputation mechanism not supported.")
         df = pd.DataFrame(imputer.fit_transform(features),

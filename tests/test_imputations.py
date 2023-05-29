@@ -45,3 +45,26 @@ class TestImputations(TestCase):
         expected = self.df.copy(deep=True)
         out, _ = impute(df, method='knn_imputer', keep_y=True)
         print(out)
+
+    def test_compare_mc_vs_mean(self):
+        df = self.df.copy(deep=True)
+        mean_out, _ = impute(df, method='simple_imputer.mean')
+        df = self.df.copy(deep=True)
+        mc_out, _ = impute(df, method='softimpute')
+        print(mean_out)
+        print(mc_out)
+
+        orig = pd.DataFrame([(i, i) for i in range(10)])
+        orig['sex'] = df['sex']
+        orig['label'] = df['label']
+        e = (orig.loc[[2, 3, 5, 6]][1].values - mean_out.loc[[2, 3, 5, 6]][1].values)
+        se = e**2
+        mse = se.mean()
+        rmse = mse ** 0.5
+        print(rmse)
+        e = (orig.loc[[2, 3, 5, 6]][1].values - mc_out.loc[[2, 3, 5, 6]][
+            1].values)
+        se = e ** 2
+        mse = se.mean()
+        rmse = mse ** 0.5
+        print(rmse)
