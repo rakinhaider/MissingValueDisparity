@@ -24,10 +24,15 @@ if __name__ == "__main__":
     parser.add_argument('--keep-y', '-ky', default=False, action='store_true')
     parser.add_argument('--method', default='mean',
                         choices=['baseline', 'drop', 'mean',
-                                 'mice', 'missForest', 'knn'])
+                                 'mice', 'missForest', 'knn', 'softimpute',
+                                 'nuclearnorm'])
     parser.add_argument('--test-method', '-tm', default='none',
                         choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')
+    # There is a mismatch in numbering of strategies.
+    # args.strategy == 2 is strategy 1 in manuscript
+    # args.strategy == 1 is strategy 2 in manuscript
+    # args.strategy == 3 is strategy 3 in manuscript
     parser.add_argument('--strategy', default=2, type=int)
     args = parser.parse_args()
 
@@ -120,10 +125,13 @@ if __name__ == "__main__":
         stat_str += ["{:.2f}".format(stat[5])]
         print('\t & \t'.join(stat_str) + '\\\\')
 
-
     pd.set_option('display.max_columns', None)
     changes = pd.DataFrame(stats.values(), index=stats.keys(),
                            columns=['proba_less', 'proba_great', 'proba_change',
                                     'rank_less', 'rank_great', 'rank_change'])
 
-    changes.to_csv('pred_changes_{:s}_{:d}.tsv'.format(dataset_name, strategy), sep='\t')
+    out_dir = f'outputs/standard/{dataset_name}/pred_changes'
+    os.makedirs(out_dir, exist_ok=True)
+
+    changes.to_csv('{:s}/pred_changes_{:s}_{:d}.tsv'.format(
+        out_dir, dataset_name, strategy), sep='\t')

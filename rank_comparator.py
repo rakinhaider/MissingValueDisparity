@@ -1,9 +1,5 @@
-import logging
 import os
-import sys
 import warnings
-# Suppresing tensorflow warning
-import pandas as pd
 
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -24,7 +20,8 @@ if __name__ == "__main__":
     parser.add_argument('--keep-y', '-ky', default=False, action='store_true')
     parser.add_argument('--method', default='mean',
                         choices=['baseline', 'drop', 'mean',
-                                 'mice', 'missForest', 'knn'])
+                                 'mice', 'missForest', 'knn', 'softimpute',
+                                 'nuclearnorm'])
     parser.add_argument('--test-method', '-tm', default='none',
                         choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')
@@ -96,9 +93,12 @@ if __name__ == "__main__":
         }
         logging.info(kwargs)
         train_fd, test_fd = get_synthetic_train_test_split(
-            train_random_state=47, test_random_state=41, type=args.distype,
-            n_samples=10000, n_features=n_feature,
+            train_random_state=args.tr_rs, test_random_state=args.te_rs,
+            type=args.distype, n_samples=10000, n_features=n_feature,
             test_method=test_method, **kwargs)
+
+        df, _ = train_fd.convert_to_dataframe()
+        logging.info(df.describe())
 
         mod, _ = get_groupwise_performance(
             estimator, train_fd, test_fd, privileged=None)
@@ -114,6 +114,7 @@ if __name__ == "__main__":
         logging.info(mod.theta_)
         logging.info(mod.var_)
         pred_proba = mod.predict_proba(test_x[model_features])
+        logging.info(pred_proba[0:10])
         test_x[method+"_proba"] = pred_proba[:, 1]
         test_x[method+"_rank"] = test_x[method+"_proba"].rank()
 
@@ -146,5 +147,7 @@ if __name__ == "__main__":
         columns=['proba_less', 'proba_great', 'proba_change',
                  'rank_less', 'rank_great', 'rank_change'])
 
-    changes.to_csv('pred_changes_{:d}_{:s}.tsv'.format(
-        group_shift, args.method), sep='\t')
+    out_dir = f'outputs/synthetic/pred_changes/'
+    os.makedirs(out_dir, exist_ok=True)
+    changes.to_csv('{:s}/pred_changes_{:d}_{:s}.tsv'.format(
+        out_dir, group_shift, args.method), sep='\t')
