@@ -1,54 +1,79 @@
 #!/bin/bash
 
-source myvenv/Scripts/activate
-echo `pip --version`
-out_dir='outputs'
-mkdir ${out_dir} 2>/dev/null
+echo "Table 1: Changes in positive prediction probabilities and
+rankings of identically distributed privileged and unpriv-
+ileged group when moving to 𝜃′ from 𝜃."
 
-export PYTHONPATH="$(pwd)"
+python -m rank_comparator -dt ccd --method mean
 
-printf "Table 1: \n"
+echo "Table 2: Changes in positive prediction probabilities and
+rankings of non-identically distributed (𝛿𝑠 > 0) privileged
+and unprivileged group after mean imputation."
 
-python -m experiment --header-only >${out_dir}/ds_ccd_0.txt
-methods=(baseline drop simple_imputer.mean iterative_imputer.mice iterative_imputer.missForest knn_imputer)
-alphas=(0.25 0.50 0.75)
-for method in ${methods[@]}; do
-	for alpha in ${alphas[@]}; do
-		python -m experiment --distype ds_ccd --method ${method}\
-			--alpha ${alpha} >>${out_dir}/ds_ccd_0.txt
-	done
+python -m rank_comparator -dt ccd --method mean -gs -3
+
+echo "Table 3: Changes in positive prediction probabilities and
+rankings of non-identically distributed (𝛿𝑠 < 0) privileged
+and unprivileged group after KNN imputation."
+
+python -m rank_comparator -dt ccd --method mean -gs -3 --method knn
+
+echo "Table 4: Changes in positive prediction probabilities and
+rankings of non-identically distributed (𝛿𝑠 > 0) privileged
+and unprivileged group after mean imputation."
+
+python -m rank_comparator -dt ccd --method mean -gs 3
+
+echo "Table 5: Group-wise performance of NBC classifier after each
+missing value handling mechanism when the groups are
+identically distributed and 𝑥1 and 𝑥2 are correlated."
+
+for method in baseline drop mean mice knn; do
+	python -m experiment_synthetic -dt corr --method ${method}
 done
 
-printf "Table 2: \n"
+echo "Table 6: Group-wise performance of NBC classifier after each
+missing value handling mechanism when the groups are non-
+identically distributed and 𝑥1 and 𝑥2 are correlated."
 
-python -m experiment --header-only >${out_dir}/ds_ccd_kip.txt
-alphas=(0.25 0.50 0.75)
-for method in ${methods[@]}; do
-	for alpha in ${alphas[@]}; do
-		python -m experiment --distype ds_ccd --method ${method}\
-			--alpha ${alpha} -kip >>${out_dir}/ds_ccd_kip.txt
-	done
+for method in baseline drop mean mice knn; do
+	python -m experiment_synthetic -dt corr --method ${method} -gs -3
 done
 
-printf "Table 3: \n"
+# TODO: The FPR graph need re-do.
 
-python -m experiment --header-only >${out_dir}/ccd_0.txt
-alphas=(0.25 0.50 0.75)
-for method in ${methods[@]}; do
-	for alpha in ${alphas[@]}; do
-		python -m experiment --distype ccd --method ${method}\
-			--alpha ${alpha} >>${out_dir}/ccd_0.txt
-	done
+echo "Table 7: Group-wise performance of NBC classifier where
+missing value in both train and test samples were imputed."
+for method in baseline mean mice knn; do
+	python -m experiment_synthetic -dt corr --method ${method} -gs -3 -tm train
 done
 
-printf "Table 4: \n"
+echo "Table 8: Changes in positive prediction probabilities and
+rankings of privileged and unprivileged group of COMPAS
+dataset after mean imputation. Missing values were introduced using strategy 1."
+python -m rank_comparator_standard -d compas --strategy 2
 
-python -m experiment --header-only >${out_dir}/ccd_kip.txt
-alphas=(0.25 0.50 0.75)
-for method in ${methods[@]}; do
-	for alpha in ${alphas[@]}; do
-		python -m experiment --distype ccd --method ${method}\
-			--alpha ${alpha} -kip >>${out_dir}/ccd_kip.txt
+echo "Table 9: Changes in positive prediction probabilities and
+rankings of privileged and unprivileged group of PIMA
+dataset after mean imputation. Missing values were introduced using strategy 1."
+python -m rank_comparator_standard -d pima --strategy 2
+
+echo "Table 10: Group-wise performance of NBC classifier after
+each missing value handling mechanism on PIMA dataset."
+for estimator in nb pr; do
+	echo 'Classifier' ${estimator}
+	for method in baseline mean mice knn; do
+		python -m experiment_standard_dataset\
+			  --dataset pima --method ${method}\
+			  --estimator ${estimator} --strategy 3\
+			  --priv-ic-prob 0.1 --unpriv-ic-prob 0.4;
 	done
+done
+echo 'Classifier' RBC
+for method in baseline mean mice knn; do
+	python -m experiment_standard_dataset\
+		  --dataset pima --method ${method}\
+		  --estimator lr --reduce --strategy 3\
+		  --priv-ic-prob 0.1 --unpriv-ic-prob 0.4;
 done
 

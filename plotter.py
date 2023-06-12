@@ -1,14 +1,9 @@
 import logging
-import os
-
 import pandas as pd
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
-import argparse
 from utils import get_parser, get_estimator, get_synthetic_train_test_split, METHOD_SHORTS
 
 
@@ -81,10 +76,6 @@ def plot_normal(mu, sigma, ax, label=None, privileged=None, cls=0):
     else:
         color = '#ff7f0e'
         linestyle = (0, (1, 1))
-    # if privileged == 1:
-    #    linestyle = 'dashed'
-    #else:
-    #    linestyle = 'dotted'
     label = '+' if cls else '-'
     ax.plot(x, stats.norm.pdf(x, mu, sigma), linestyle=linestyle,
             color=color, label=label)
@@ -270,7 +261,7 @@ if __name__ == "__main__":
 
         # textwidth = 505
         linewidth = args.width
-        out_dir = 'outputs/figures/'
+        out_dir = '../outputs/figures/'
 
         set_rcparams(fontsize=args.fontsize)
         if not test_method:
