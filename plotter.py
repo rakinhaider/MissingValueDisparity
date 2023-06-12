@@ -261,7 +261,7 @@ if __name__ == "__main__":
 
         # textwidth = 505
         linewidth = args.width
-        out_dir = '../outputs/figures/'
+        out_dir = 'outputs/figures/'
 
         set_rcparams(fontsize=args.fontsize)
         if not test_method:
