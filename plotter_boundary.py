@@ -49,10 +49,13 @@ def plot_boundary(df, baseline, mod, bmod):
         plt.gca().add_patch(ellipse)
     plot_non_linear_boundary(mod, linestyles='solid')
     plot_non_linear_boundary(bmod, linestyles='dotted')
-    plt.legend(loc='upper left', fontsize='xx-small')
+    plt.legend(loc='upper left', fontsize=4)
 
 
 if __name__ == "__main__":
+
+    figsize = 172
+
     parser = get_parser()
     parser.add_argument('--distype', '-dt', default='ds_ccd',
                         choices=['ds_ccd', 'ccd', 'corr'],
@@ -134,7 +137,7 @@ if __name__ == "__main__":
     df, _ = train_fd.convert_to_dataframe()
     baseline_df, _ = baseline_train_fd.convert_to_dataframe()
     set_rcparams(fontsize=9)
-    plt.figure(figsize=set_size(250, .95, 0.6))
+    plt.figure(figsize=set_size(figsize, .95, 0.6))
     plot_boundary(df, baseline_df, mod, baseline_mod)
     outdir = 'outputs/figures/boundary'
     fname = f'{outdir}/{args.distype}_{args.delta}_{args.group_shift}' \

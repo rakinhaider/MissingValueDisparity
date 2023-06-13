@@ -16,7 +16,7 @@ echo "Table 3: Changes in positive prediction probabilities and
 rankings of non-identically distributed (𝛿𝑠 < 0) privileged
 and unprivileged group after KNN imputation."
 
-python -m rank_comparator -dt ccd --method mean -gs -3 --method knn
+python -m rank_comparator -dt ccd --method knn -gs -3
 
 echo "Table 4: Changes in positive prediction probabilities and
 rankings of non-identically distributed (𝛿𝑠 > 0) privileged
@@ -39,8 +39,6 @@ identically distributed and 𝑥1 and 𝑥2 are correlated."
 for method in baseline drop mean mice knn; do
 	python -m experiment_synthetic -dt corr --method ${method} -gs -3
 done
-
-# TODO: The FPR graph need re-do.
 
 echo "Table 7: Group-wise performance of NBC classifier where
 missing value in both train and test samples were imputed."
