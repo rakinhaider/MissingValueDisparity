@@ -12,14 +12,14 @@ class PimaDataset(BinaryLabelDataset):
         file_path = os.path.join(file_dir, '..', 'data', 'raw', 'pima',
                                  'pima-indians-diabetes.csv')
         df = pd.read_csv(file_path)
+
         # Quantize age
         def age_quantizer(x):
             if x <= 45:
                 return 1
             else:
                 return 0
-
-        df['Age'] = df['Age'].apply(age_quantizer)
+        df['Age'] = df['Age'].astype(int).apply(age_quantizer)
 
         super(PimaDataset, self).__init__(
             df=df, label_names=label_names,

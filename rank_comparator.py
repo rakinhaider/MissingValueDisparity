@@ -1,10 +1,14 @@
+import itertools
 import os
 import warnings
+
+import pandas as pd
 
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from utils import *
+from collections import defaultdict
 
 if __name__ == "__main__":
     parser = get_parser()
@@ -81,73 +85,81 @@ if __name__ == "__main__":
     # compared_method = 'knn_imputer'
     method_full = METHOD_SHORT_TO_FULL[args.method]
     for m in ['baseline', method_full]:
-        kwargs = {
-            'protected_attribute_names': ['sex'], 'privileged_group': 'Male',
-            'favorable_label': 1, 'classes': [0, 1],
-            'sensitive_groups': ['Female', 'Male'],
-            'group_shift': group_shift,
-            'beta': 1, 'dist': dist, 'keep_im_prot': keep_prot,
-            'alpha': alpha, 'method': m, 'verbose': False,
-            'priv_ic_prob': args.priv_ic_prob,
-            'unpriv_ic_prob': args.unpriv_ic_prob
-        }
-        logging.info(kwargs)
-        train_fd, test_fd = get_synthetic_train_test_split(
-            train_random_state=args.tr_rs, test_random_state=args.te_rs,
-            type=args.distype, n_samples=10000, n_features=n_feature,
-            test_method=test_method, **kwargs)
+        models[m] = {}
+        for rs in RANDOM_SEEDS:
+            kwargs = {
+                'protected_attribute_names': ['sex'], 'privileged_group': 'Male',
+                'favorable_label': 1, 'classes': [0, 1],
+                'sensitive_groups': ['Female', 'Male'],
+                'group_shift': group_shift,
+                'beta': 1, 'dist': dist, 'keep_im_prot': keep_prot,
+                'alpha': alpha, 'method': m, 'verbose': False,
+                'priv_ic_prob': args.priv_ic_prob,
+                'unpriv_ic_prob': args.unpriv_ic_prob
+            }
+            logging.info(kwargs)
+            train_fd, test_fd = get_synthetic_train_test_split(
+                train_random_state=rs, test_random_state=TEST_SEED,
+                type=args.distype, n_samples=10000, n_features=n_feature,
+                test_method=test_method, **kwargs)
 
-        df, _ = train_fd.convert_to_dataframe()
-        logging.info(df.describe())
+            df, _ = train_fd.convert_to_dataframe()
+            logging.info(df.describe())
 
-        mod, _ = get_groupwise_performance(
-            estimator, train_fd, test_fd, privileged=None)
+            mod, _ = get_groupwise_performance(
+                estimator, train_fd, test_fd, privileged=None)
 
-        models[m] = mod
+            models[m][rs] = mod
 
-    probas = []
-    test_x, test_y = get_xy(test_fd, keep_protected=True)
-    model_features = test_x.columns[:-1]
-    test_x['label'] = test_y
-    for method in models.keys():
-        mod = models[method]
-        logging.info(mod.theta_)
-        logging.info(mod.var_)
-        pred_proba = mod.predict_proba(test_x[model_features])
-        logging.info(pred_proba[0:10])
-        test_x[method+"_proba"] = pred_proba[:, 1]
-        test_x[method+"_rank"] = test_x[method+"_proba"].rank()
-
-    test_x.columns = [0, 1, 'sex', 'label', 'base_proba', 'base_rank', 'mean_proba', 'mean_rank']
-    test_x.to_csv('rank.tsv', sep='\t')
-    grouped = test_x.groupby(by=['sex', 'label'])
     stats = {}
-    for tup, grp in grouped:
-        # print(tup)
-        # print(grp.describe())
-        proba_comp = grp['mean_proba'] - grp['base_proba']
-        rank_comp = grp['mean_rank'] - grp['base_rank']
-        stat = [(proba_comp < 0).sum() * 100,
-                (proba_comp > 0).sum() * 100, proba_comp.sum(),
-                (rank_comp < 0).sum() * 100,
-                (rank_comp > 0).sum() * 100, rank_comp.sum()]
-        stat = [s / len(grp) for s in stat]
-        stats[tup] = stat
-        stat_str = ['({}, {})'.format('u' if tup[0] == 0 else 'p',
-                                      '-' if tup[1] == 0 else '+')]
-        stat_str += ["{:.2f}".format(stat[i]) for i in [0, 1]]
-        stat_str += ["{:.1e}".format(stat[2])]
-        stat_str += ["{:.2f}".format(stat[i]) for i in [3, 4]]
-        stat_str += ["{:.2f}".format(stat[5])]
-        print('\t & \t'.join(stat_str) + '\\\\')
+    for rs in RANDOM_SEEDS:
+        probas = []
+        test_x, test_y = get_xy(test_fd, keep_protected=True)
+        model_features = test_x.columns[:-1]
+        test_x['label'] = test_y
+        for method in models.keys():
+            mod = models[method][rs]
+            logging.info(mod.theta_)
+            logging.info(mod.var_)
+            pred_proba = mod.predict_proba(test_x[model_features])
+            logging.info(pred_proba[0:10])
+            test_x[method+"_proba"] = pred_proba[:, 1]
+            test_x[method+"_rank"] = test_x[method+"_proba"].rank()
 
+        test_x.columns = [0, 1, 'sex', 'label', 'base_proba', 'base_rank',
+                          'mean_proba', 'mean_rank']
+        test_x.to_csv('rank.tsv', sep='\t')
+        grouped = test_x.groupby(by=['sex', 'label'])
+        for (s, y), grp in grouped:
+            # print(tup)
+            # print(grp.describe())
+            proba_comp = grp['mean_proba'] - grp['base_proba']
+            rank_comp = grp['mean_rank'] - grp['base_rank']
+            stat = [(proba_comp < 0).sum() * 100,
+                    (proba_comp > 0).sum() * 100, proba_comp.sum(),
+                    (rank_comp < 0).sum() * 100,
+                    (rank_comp > 0).sum() * 100, rank_comp.sum()]
+            stat = pd.Series([s / len(grp) for s in stat])
+            stats[(s, y, rs)] = stat
+
+    stats = pd.DataFrame(stats).transpose()
+    for s, y in itertools.product([0, 1], [0, 1]):
+        stat_str = ['&\t&\t({}, {})'.format('u' if s == 0 else 'p',
+                                      '-' if y == 0 else '+')]
+        stat = stats.loc[s, y, :]
+        stat_str += [f"{stat[0].mean():.2f} ({stat[0].std():.2f})"]
+        stat_str += [f"{stat[1].mean():.2f} ({stat[1].std():.2f})"]
+        stat_str += [f"{stat[2].mean():.1e}"]
+        stat_str += [f"{stat[3].mean():.2f} ({stat[3].std():.2f})"]
+        stat_str += [f"{stat[4].mean():.2f} ({stat[4].std():.2f})"]
+        stat_str += [f"{stat[5].mean():.2f}"]
+        print('\t & \t'.join(stat_str) + '\\\\')
     pd.set_option('display.max_columns', None)
 
-    changes = pd.DataFrame(stats.values(), index=stats.keys(),
-        columns=['proba_less', 'proba_great', 'proba_change',
-                 'rank_less', 'rank_great', 'rank_change'])
+    stats.columns = ['proba_less', 'proba_great', 'proba_change',
+                 'rank_less', 'rank_great', 'rank_change']
 
     out_dir = f'outputs/synthetic/pred_changes/'
     os.makedirs(out_dir, exist_ok=True)
-    changes.to_csv('{:s}/pred_changes_{:d}_{:s}.tsv'.format(
+    stats.to_csv('{:s}/pred_changes_{:d}_{:s}.tsv'.format(
         out_dir, group_shift, args.method), sep='\t')

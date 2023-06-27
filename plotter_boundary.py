@@ -27,20 +27,21 @@ def plot_non_linear_boundary(mod, color='black', linestyles='solid'):
 
 def plot_boundary(df, baseline, mod, bmod):
     colors = [['tab:olive', 'tab:green'], ['tab:pink', 'tab:red']]
-    grouped = baseline.groupby(by=['sex', 'label'])
+    grouped = df.groupby(by=['sex', 'label'])
 
     for (s, y), grp in grouped:
         s, y = int(s), int(y)
         c = colors[y][s]
         selected = grp.loc[np.random.choice(grp.index, 100)]
-        plt.scatter(selected['0'], selected['1'], c=c, s=5)
+        plt.scatter(selected['0'], selected['1'], c=c, s=3)
         x_mean = grp['0'].mean()
         y_mean = grp['1'].mean()
         width = 2 * sqrt(5.991) * grp['0'].std()
-        height = 2 * sqrt(5.991) * grp['0'].std()
+        height = 2 * sqrt(5.991) * grp['1'].std()
         center = (x_mean, y_mean)
         # print(s, y, f"({'u' if s == 0 else 'p'}, "
         #             f"{'-' if y == 0 else '+' })")
+        print(s, y, center, width, height)
         ellipse = Ellipse(xy=center, width=width, height=height,
                           color=c,
                           fill=False, linewidth=1,
@@ -134,8 +135,8 @@ if __name__ == "__main__":
     baseline_mod, _ = get_groupwise_performance(
         estimator, baseline_train_fd, baseline_test_fd, privileged=None)
 
-    df, _ = train_fd.convert_to_dataframe()
-    baseline_df, _ = baseline_train_fd.convert_to_dataframe()
+    df, _ = test_fd.convert_to_dataframe()
+    baseline_df, _ = baseline_test_fd.convert_to_dataframe()
     set_rcparams(fontsize=9)
     plt.figure(figsize=set_size(figsize, .95, 0.6))
     plot_boundary(df, baseline_df, mod, baseline_mod)

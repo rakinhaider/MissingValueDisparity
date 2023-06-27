@@ -72,12 +72,19 @@ def have_missing(row, uic, pic, pa_names):
 
 
 def rand_single_col_selector(row, uic, pic, pa_names, label_names):
+    """
+    :return: Returns index of a single column where the missing value will be
+    """
     columns = list(row.index)
     indices = [i for i, c in enumerate(columns) if c not in pa_names+label_names]
     return np.random.choice(indices, size=1, replace=False)
 
 
 def rand_many_col_selector(row, uic, pic, pa_names, label_names, cutoff=0.5):
+    """
+        :return: Returns random list of indices of column
+            where the missing value will be
+    """
     columns = list(row.index)
     indices = [i for i, c in enumerate(columns) if
                c not in pa_names + label_names]

@@ -44,11 +44,22 @@ if __name__ == "__main__":
         for file in ['german.data', 'german.doc']:
             target = os.path.join(dir, file)
             wget.download(baseurl + file, target)
+    elif args.dataset == 'adult':
+        dir = os.path.join(args.aif360_folder, 'data', 'raw', 'adult')
+        baseurl = 'https://archive.ics.uci.edu/ml/' \
+                  'machine-learning-databases/adult/'
+
+        for file in ['adult.data', 'adult.test', 'adult.names']:
+            target = os.path.join(dir, file)
+            wget.download(baseurl + file, target)
     elif args.dataset == 'pima':
         file_name = 'pima-indians-diabetes.csv'
         baseurl = 'https://nrvis.com/data/mldata/'
         dir = os.path.join('data', 'raw', 'pima')
         target = os.path.join(dir, file_name)
+        if os.path.exists(baseurl + file_name, target):
+            print('Files already exists.')
+            exit()
         wget.download(baseurl + file_name, target)
         """
         df = pd.read_csv(target, header=None,

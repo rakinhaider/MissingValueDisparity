@@ -40,34 +40,44 @@ class MVDFairDataset(FairDataset):
                 favorable_label=favorable_label, alpha=alpha, beta=beta,
                 sensitive_groups=sensitive_groups, classes=classes, **kwargs)
 
-        self.R = self.generate_missing_matrix(**kwargs)
-        incomplete_df = self.get_incomplete_df(
-            protected_attribute_names=protected_attribute_names,
-            label_names=label_names,
-            instance_names=kwargs.get('instance_names', None)
-        )
-        logging.info(f'incomplete_df_description {incomplete_df.describe().loc["count"]}')
-        if kwargs.get('imputer', None):
-            self.imputer = kwargs['imputer']
-            if kwargs.get('keep_im_prot', False):
-                non_feature_names = [] + label_names
-            else:
-                non_feature_names = protected_attribute_names + label_names
-            feature_names = [i for i in incomplete_df.columns
-                             if i not in non_feature_names]
-            imputed_df = pd.DataFrame(
-                self.imputer.transform(incomplete_df[feature_names]),
-                columns=feature_names)
-            imputed_df[non_feature_names] = incomplete_df[non_feature_names]
-        elif 'method' in kwargs and kwargs['method'] == 'baseline':
+        if 'method' in kwargs and kwargs['method'] == 'baseline':
             imputed_df = self.complete_df
             self.imputer = None
+            self.R = sparse.csr_matrix(np.zeros((n_samples, n_features)))
         else:
-            imputed_df, self.imputer = impute(
-                incomplete_df, kwargs.get('method', 'drop'),
-                keep_im_prot=kwargs.get('keep_im_prot', False),
+            self.R = self.generate_missing_matrix(**kwargs)
+            incomplete_df = self.get_incomplete_df(
+                protected_attribute_names=protected_attribute_names,
                 label_names=label_names,
-                protected_attribute_names=protected_attribute_names)
+                instance_names=kwargs.get('instance_names', None)
+            )
+            logging.info(f'incomplete_df_description {incomplete_df.describe().loc["count"]}')
+            if kwargs.get('imputer', None):
+                self.imputer = kwargs['imputer']
+                if kwargs.get('keep_im_prot', False):
+                    non_feature_names = [] + label_names
+                else:
+                    non_feature_names = protected_attribute_names + label_names
+                feature_names = [i for i in incomplete_df.columns
+                                 if i not in non_feature_names]
+                if kwargs['method'] == 'softimpute':
+                    imputed_df, _ = impute(
+                        incomplete_df, kwargs.get('method', 'drop'),
+                        keep_im_prot=kwargs.get('keep_im_prot', False),
+                        label_names=label_names,
+                        protected_attribute_names=protected_attribute_names)
+                else:
+                    imputed_df = pd.DataFrame(
+                        self.imputer.transform(incomplete_df[feature_names]),
+                        columns=feature_names)
+                imputed_df[non_feature_names] = incomplete_df[non_feature_names]
+
+            else:
+                imputed_df, self.imputer = impute(
+                    incomplete_df, kwargs.get('method', 'drop'),
+                    keep_im_prot=kwargs.get('keep_im_prot', False),
+                    label_names=label_names,
+                    protected_attribute_names=protected_attribute_names)
 
         super(MVDFairDataset, self).__init__(
             df=imputed_df, label_names=label_names,

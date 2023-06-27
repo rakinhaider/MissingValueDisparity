@@ -8,11 +8,11 @@ from historical biases. We train Gaussian Naive Bayes classifiers on
 synthetic fair balanced dataset *(SFBD)* of 10000
 samples with 2 or 10 features. Results show that missing value disparity
 skew the model closer to one group than the other. We also experiment
-with real-world dataset, namely, COMPAS and PIMA and observe similar
-discriminating patterns. Missing value disparity introduces bias by inducing
-changes in prediction probabilities. In cases where the change is too low to
+with real-world datasets COMPAS, Adult and PIMA. We observe similar
+discriminating patterns. Missing value disparity induces bias by changing
+the prediction probabilities. In cases where the change is too low to
 alter the original prediction (obtained from baseline without any missing
-values), it can unfairly re-order the relative ranking of the individuals.
+values), it unfairly re-orders the relative ranking of the individuals.
 
 ## Getting Started
 
@@ -25,16 +25,16 @@ system configurations.
 | ------- | ------------------------------|
 | OS      | Linux (Ubuntu 20.04.2 64bit)  |
 | Python  | 3.8.10                        |
-| pip     |  20.0.2                             |
+| pip     |  21.1.1                             |
 
 ### Randomization Seeds
 The following seeds where used to ensure reproducibility of the results. Further experiments can be carried out by trying out different randomization seeds.
 
-|  Case                         |  Seed    |
-| ------- | ------------------------------|
-| Training SFBD Generation      |   47  |
-| Test SFBD Generation          |   41  |
-| COMPAS train test split       |   23  |
+| Dataset |  Case                         |  Seed    |
+| ------- | ------- | ------------------------------|
+|Synthetic | Training SFBD Generation      |   11, 13, 17, 19, 21, 29, 31, 37, 43, **47 (default)**   |
+|Synthetic| Test SFBD Generation          |   41  |
+|Real world dataset | Train test split       |   41  |
 
 ### Getting Started
 
@@ -62,13 +62,14 @@ by replacing *<aif360-folder>* with the aif360 folder location.
 ```bash
 python -m download --aif360-folder <aif360-folder>
 ```
-In my case it was,
+Typically it is,
 ```bash
 python -m download --aif360-folder myvenv/lib/python3.8/site-packages/aif360/
 ```
-Now download the PIMA dataset with the following command.
+Now download the Adult and the PIMA dataset with the following command.
 ```bash
 python -m download --dataset pima
+python -m download --dataset adult
 ```
 
 ### Executing program
@@ -76,8 +77,8 @@ python -m download --dataset pima
 * To generate all the results use *run.sh*
 * The following command will generate all the tables in the paper
 ```bash
-chmod +x run.sh
-./run.sh
+chmod +x scripts/run.sh
+./scripts/run.sh
 ```
 
 * You can also run the script individually to obtain the results.

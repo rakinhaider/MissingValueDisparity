@@ -90,7 +90,9 @@ def get_standard_dataset(dataset_name):
         dataset.privileged_groups = [{'age': 1}]
         dataset.unprivileged_groups = [{'age': 0}]
     elif dataset_name == 'adult':
-        dataset = load_preproc_data_adult()
+        dataset = load_preproc_data_adult(protected_attributes=['race'])
+        dataset.privileged_groups = [{'race': 1}]
+        dataset.unprivileged_groups = [{'race': 0}]
         # dataset = AdultDataset()
     elif dataset_name == 'pima':
         dataset = PimaDataset()
@@ -369,3 +371,5 @@ METHOD_SHORT_TO_FULL = {'baseline': 'baseline',
                         'knn': 'knn_imputer',
                         'softimpute': 'softimpute',
                         'nuclearnorm': 'nuclearnorm'}
+RANDOM_SEEDS = [11, 13, 17, 19, 21, 29, 31, 37, 43, 47]
+TEST_SEED = 41

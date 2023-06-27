@@ -279,6 +279,7 @@ if __name__ == "__main__":
         print(plt.gcf().get_size_inches())
         plt.savefig(out_dir + fname, format='pdf')
     elif args.what == 'byupic':
+        figsize = 220
         fname = 'outputs/synthetic/vary_upic.tsv'
         splits = []
         for line in open(fname, 'r'):
@@ -297,14 +298,15 @@ if __name__ == "__main__":
         bbox_to_anchor_top = 1.12
 
         set_rcparams(fontsize=9, linewidth=1)
-        fig = plt.figure(figsize=set_size(200, .95, 0.6))
+        fig = plt.figure(figsize=set_size(figsize, .95, 0.5))
 
         styles = ['--', '-']
-        colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+        colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']
         for i, col in enumerate(['FPR_p', 'FPR_u']):
             plt.hlines(y=df.loc[0][col], xmin=0, xmax=1, linestyles=styles[i],
                        label='baseline', color='black')
-            for j, method in enumerate(['drop', 'mean', 'mice', 'knn']):
+            for j, method in enumerate(['drop', 'mean', 'mice', 'knn',
+                                        'softimpute']):
                 sub_df = df[df['method'] == method]
                 print(sub_df[col])
                 plt.plot([i / 10 for i in range(1, 7)], sub_df[col],
@@ -318,39 +320,46 @@ if __name__ == "__main__":
             plt.xticks([i/10 for i in range(1, 7)])
 
         handles, labels = plt.gca().get_legend_handles_labels()
-        plt.figlegend(handles[5:], labels[5:],
+        plt.figlegend(handles[6:], labels[6:],
                       bbox_to_anchor=(0.58, bbox_to_anchor_top),
                       loc='upper center', ncol=3, fontsize='xx-small')
-        plt.legend([handles[0], handles[5]], [r'$FPR_p$', r'$FPR_u$'],
-                   fontsize='xx-small', loc='center right')
+        plt.legend([handles[0], handles[6]], [r'$FPR_p$', r'$FPR_u$'],
+                   fontsize=4, loc='upper left')
         plt.tight_layout()
         plt.savefig('outputs/figures/vary_upic_fpr.pdf', format='pdf',
                     bbox_inches='tight')
 
 
         # TODO: update SR plot accordingly
+        plt.clf()
         set_rcparams(fontsize=9)
-        fig, axs = plt.subplots(
-            1, 2, figsize=set_size(242, .95, 0.45))
-
+        fig = plt.figure(figsize=set_size(figsize, .95, 0.5))
+        styles = ['--', '-']
+        colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red',
+                  'tab:purple']
         for i, col in enumerate(['SR_p', 'SR_u']):
-            axs[i].hlines(y=df.loc[0][col], xmin=0, xmax=1, linestyles='dashed',
-                          label='baseline', color='black')
-            for method in ['drop', 'mean',
-                           'mice', 'knn']:
+            plt.hlines(y=df.loc[0][col], xmin=0, xmax=1, linestyles=styles[i],
+                       label='baseline', color='black')
+            for j, method in enumerate(['drop', 'mean', 'mice', 'knn',
+                                        'softimpute']):
                 sub_df = df[df['method'] == method]
                 print(sub_df[col])
-                axs[i].plot([i / 10 for i in range(1, 7)], sub_df[col],
-                            # '-^', markersize=3,
-                            label='{}'.format(method))
-                axs[i].set_xlabel(col)
+                plt.plot([i / 10 for i in range(1, 7)], sub_df[col],
+                         styles[i], color=colors[j],
+                         label='{}'.format(method))
+                # axs[i].set_xlabel(r'${}$'.format(col))
+                plt.xlabel(r'$\lambda_u$', fontsize=9)
+                plt.ylabel(r'$SR_s$', fontsize=9)
 
-            axs[i].set_xlim(0.8, 6.2)
+            plt.xlim(0.08, 0.62)
+            plt.xticks([i / 10 for i in range(1, 7)])
 
         handles, labels = plt.gca().get_legend_handles_labels()
-        plt.figlegend(handles[:5], labels[:5],
-                      bbox_to_anchor=(0.5, bbox_to_anchor_top),
-                      loc='upper center', ncol=5, fontsize='xx-small')
+        plt.figlegend(handles[6:], labels[6:],
+                      bbox_to_anchor=(0.58, bbox_to_anchor_top),
+                      loc='upper center', ncol=3, fontsize='xx-small')
+        plt.legend([handles[0], handles[6]], [r'$SR_p$', r'$SR_u$'],
+                   fontsize=5, loc='upper left')
         plt.tight_layout()
         plt.savefig('outputs/figures/vary_upic_sr.pdf', format='pdf',
                     bbox_inches='tight')

@@ -72,26 +72,11 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
         estimator, std_train, std_train, privileged=True, **cali_kwargs)
     complete_umod, _ = get_groupwise_performance(
         estimator, std_train, std_train, privileged=False, **cali_kwargs)
-    # logging.info(mod.feature_log_prob_)
-    # logging.info(complete_pmod.feature_log_prob_)
-    # logging.info(complete_umod.feature_log_prob_)
-
-    # p_pos_dist = np.array([np.exp(i[1]) for i in complete_pmod.feature_log_prob_])
-    # u_pos_dist = np.array([np.exp(i[1]) for i in complete_umod.feature_log_prob_])
-    # mod_pos_dist = np.array([np.exp(i[1]) for i in mod.feature_log_prob_])
-
-    # p_to_mod = KL_divergence(p_pos_dist, mod_pos_dist)
-    # u_to_mod = KL_divergence(u_pos_dist, mod_pos_dist)
-
-    # logging.info(p_to_mod)
-    # logging.info(u_to_mod)
 
     if args.strategy == 1:
         var_val = (args.dataset, col, args.method,
                    args.unpriv_ic_prob, args.priv_ic_prob, fold_id)
     else:
-        # var_val = (args.dataset, args.method,
-        #            args.unpriv_ic_prob, args.priv_ic_prob, fold_id)
         var_val = (args.method)
 
     row = get_table_row(is_header=False, p_perf=m_perf, u_perf=m_perf,

@@ -23,7 +23,7 @@ if __name__ == "__main__":
     parser.add_argument('--keep-y', '-ky', default=False, action='store_true')
     parser.add_argument('--method', default='mean',
                         choices=['baseline', 'drop', 'mean',
-                                 'mice', 'missForest', 'knn'])
+                                 'mice', 'missForest', 'knn', 'softimpute'])
     parser.add_argument('--test-method', '-tm', default='none',
                         choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')

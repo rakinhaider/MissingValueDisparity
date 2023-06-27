@@ -13,7 +13,6 @@ class StandardCCDDataset(CCDFairDataset):
             __dict__.get('instance_weight_names', None)
 
         self.complete_df = df
-
         super(StandardCCDDataset, self).__init__(
             n_samples=len(df), standard=std_dataset, complete_df=df,
             label_names=std_dataset.label_names,

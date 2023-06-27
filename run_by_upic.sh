@@ -1,6 +1,6 @@
 #!/bin/bash
 
-methods=('mean' 'mice' 'knn')
+methods=('drop' 'mean' 'mice' 'knn' 'softimpute')
 estimators=('nb' 'lr' 'dt' 'pr')
 datasets=('compas' 'bank')
 xvalid=''
@@ -9,7 +9,7 @@ logging='-ll DEBUG'
 if [ $1 == "syn" ]; then
 	fname=outputs/synthetic/vary_upic.tsv;
 	python -m experiment_synthetic --header-only >$fname;
-	methods=('drop' 'mean' 'mice' 'knn')
+	methods=('drop' 'mean' 'mice' 'knn' 'softimpute')
 	alpha=0.5
 	python -m experiment_synthetic\
 		--alpha $alpha --distype corr\
