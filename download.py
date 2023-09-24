@@ -9,7 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--aif360-folder',
                         help='The folder where aif360 packege is installed.',
-                        default="myvenv/Lib/site-packages/aif360/")
+                        default="myvenv/site-packages/aif360/")
     parser.add_argument('--dataset', '-d', default='compas')
 
     file_name = ""
@@ -18,9 +18,10 @@ if __name__ == "__main__":
     if args.dataset == 'compas':
         out = os.path.join(args.aif360_folder, 'data', 'raw', 'compas',
                            'compas-scores-two-years.csv')
-        wget.download('https://raw.githubusercontent.com/propublica/'
-                  'compas-analysis/master/compas-scores-two-years.csv',
-                  out)
+        if not os.path.exists(out):
+            wget.download('https://raw.githubusercontent.com/propublica/'
+                      'compas-analysis/master/compas-scores-two-years.csv',
+                      out)
 
     elif args.dataset == 'bank':
         tempdir = tempfile.mkdtemp()
@@ -43,7 +44,8 @@ if __name__ == "__main__":
 
         for file in ['german.data', 'german.doc']:
             target = os.path.join(dir, file)
-            wget.download(baseurl + file, target)
+            if not os.path.exists(target):
+                wget.download(baseurl + file, target)
     elif args.dataset == 'adult':
         dir = os.path.join(args.aif360_folder, 'data', 'raw', 'adult')
         baseurl = 'https://archive.ics.uci.edu/ml/' \
@@ -51,13 +53,15 @@ if __name__ == "__main__":
 
         for file in ['adult.data', 'adult.test', 'adult.names']:
             target = os.path.join(dir, file)
-            wget.download(baseurl + file, target)
+            wget.download(baseurl + file, target, bar=None)
     elif args.dataset == 'pima':
         file_name = 'pima-indians-diabetes.csv'
         baseurl = 'https://nrvis.com/data/mldata/'
         dir = os.path.join('data', 'raw', 'pima')
         target = os.path.join(dir, file_name)
-        if os.path.exists(baseurl + file_name, target):
+        if not os.path.exists(dir):
+            os.makedirs(dir, exist_ok=True)
+        elif os.path.exists(target):
             print('Files already exists.')
             exit()
         wget.download(baseurl + file_name, target)

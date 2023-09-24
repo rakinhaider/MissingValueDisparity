@@ -1,7 +1,10 @@
 #!/bin/bash
 
-python -m download --dataset compas
-python -m download --dataset pima
+aif360folder=$1
+
+python -m download --aif360-folder ${aif360folder} --dataset compas
+python -m download --aif360-folder ${aif360folder} --dataset pima
+python -m download --aif360-folder ${aif360folder} --dataset adult
 
 echo "Table 1: Changes in positive prediction probabilities and
 rankings of identically distributed privileged and unpriv-

@@ -48,6 +48,11 @@ source myvenv/bin/activate
 
 ### Installing Dependencies
 
+Install python tkinter using the following command,
+```bash
+sudo apt-get install python3-tk
+```
+
 Install all the dependencies with the following command.
 
 ```bash
