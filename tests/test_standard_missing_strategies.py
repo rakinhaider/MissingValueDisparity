@@ -16,25 +16,21 @@ class TestStandardMissingStrategies(TestCase):
 
     def test_get_missing_matrix_by_column(self):
         print(self.df)
-        mmat = get_missing_matrix_by_column(self.df, 0.2, 0.1, ['race'], 2)
+        mmat = get_missing_matrix_by_column(self.df, 0.2, 0.1, ['race'], 2, None)
         assert sum(sum(mmat)) == 4
         assert all(np.sum(mmat, axis=0) == [0, 0, 4, 0, 0, 0])
         # TODO: Should test group-wise missing percentages.
 
     def test_rand_col_selector(self):
-        col = rand_single_col_selector(self.df.loc[1], 0.2, 0.1,
-                                       ['race'], ['label'])
+        col = rand_single_col_selector(self.df.loc[1], 0.2, 0.1, ['race'], ['label'], None)
         assert all(col == [1])
 
     def test_missing_rand_col_by_sample(self):
         # Randomization doesn't maintain the missing_rates.
         # Toss a random probability, check if higher than non-missing prob.
-        mmat = missing_single_col_by_sample(self.df, 0.2, 0.1, ['race'], ['label'])
+        mmat = missing_single_col_by_sample(self.df, 0.2, 0.1, ['race'], ['label'], None)
 
     def test_rand_many_col_selector(self):
-        print(rand_many_col_selector(self.df.loc[1], 0.2, 0.1,
-                                     ['race'], ['label'], cutoff=0.75))
-        print(rand_many_col_selector(self.df.loc[1], 0.2, 0.1,
-                                     ['race'], ['label'], cutoff=0.5))
-        print(rand_many_col_selector(self.df.loc[1], 0.2, 0.1,
-                                     ['race'], ['label'], cutoff=0.25))
+        print(rand_many_col_selector(self.df.loc[1], 0.2, 0.1, ['race'], ['label'], None, cutoff=0.75))
+        print(rand_many_col_selector(self.df.loc[1], 0.2, 0.1, ['race'], ['label'], None, cutoff=0.5))
+        print(rand_many_col_selector(self.df.loc[1], 0.2, 0.1, ['race'], ['label'], None, cutoff=0.25))
