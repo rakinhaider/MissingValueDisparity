@@ -91,9 +91,8 @@ if __name__ == "__main__":
     mod, m_perf = get_groupwise_performance(
         estimator, train_fd, test_fd, privileged=None)
 
-    row = get_table_row(
-        is_header=False, var_value=(args.method), p_perf=m_perf,
-        u_perf=m_perf, m_perf=m_perf, variable=variable)
+    row = get_table_row(is_header=False, var_value=(args.method),
+                        m_perf=m_perf, variable=variable)
     print(row)
 
     sys.stdout.flush()

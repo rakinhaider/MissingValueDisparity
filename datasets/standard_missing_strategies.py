@@ -58,7 +58,7 @@ def get_missing_matrix_by_samples(df, uic, pic, label_names, pa_names,
     for i, (index, row) in enumerate(df.iterrows()):
         if have_missing(row, uic, pic, pa_names, rng):
             selected_columns = column_selector(
-                row, uic, pic, pa_names, label_names, **kwargs)
+                row, uic, pic, pa_names, label_names, rng, **kwargs)
             missing_matrix[i, selected_columns] = 1
     return missing_matrix
 

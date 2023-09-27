@@ -104,8 +104,7 @@ def get_standard_dataset(dataset_name):
     return dataset
 
 
-def get_table_row(is_header=False, var_value=[], p_perf=None,
-                  u_perf=None, m_perf=None, variable="alpha"):
+def get_table_row(is_header=False, var_value=[], m_perf=None, variable="alpha"):
     if isinstance(variable, tuple):
         variable = [str(v) for v in variable]
         row = [str(val) for val in var_value]
@@ -118,7 +117,7 @@ def get_table_row(is_header=False, var_value=[], p_perf=None,
         cols[start:] = ["${:s}$".format(c) for c in cols[start:]]
         return "\t & \t".join(cols) + '\\\\'
     else:
-        row += ["{:04.1f}".format(d) for d in [p_perf['AC_p'], u_perf['AC_u']]]
+        row += ["{:04.1f}".format(d) for d in [m_perf['AC_p'], m_perf['AC_u']]]
         row += ["{:04.1f}".format(m_perf[c]) for c in cols[len(variable)+2:]]
         return "\t & \t".join(row) + '\\\\'
 

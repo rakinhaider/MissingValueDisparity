@@ -61,8 +61,7 @@ class TestUtils(TestCase):
             (True, (0.25, "baseline"), ("alpha", "method")),
             (False, (0.25, "baseline"), ("alpha", "method")),
         ]):
-            out = get_table_row(is_header=header, var_value=var_value,
-                p_perf=perf, u_perf=perf, m_perf=perf, variable=variable)
+            out = get_table_row(is_header=header, var_value=var_value, m_perf=perf, variable=variable)
             assert out == expecteds[i]
 
     def test_kl_divergence(self):

@@ -1,9 +1,11 @@
 import os
 import pickle
 import warnings
-
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import utils
+
 from utils import *
 from datasets.standard_ccd_dataset import StandardCCDDataset
 
@@ -79,11 +81,12 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
     else:
         var_val = (args.method)
 
-    row = get_table_row(is_header=False, p_perf=m_perf, u_perf=m_perf,
-                        m_perf=m_perf, variable=variable,
-                        var_value=var_val)
-    print(row, flush=True)
-    logging.StreamHandler().flush()
+    row = get_table_row(is_header=False, var_value=var_val,
+                        m_perf=m_perf, variable=variable)
+    # print(row, flush=True)
+    # logging.StreamHandler().flush()
+    return m_perf
+
 
 
 if __name__ == "__main__":
@@ -133,26 +136,19 @@ if __name__ == "__main__":
         if args.header_only:
             exit()
 
-    np.random.seed(args.random_seed)
-
     data = get_standard_dataset(args.dataset)
-
-    if args.xvalid:
-        std_train = data.copy(deepcopy=True)
-        std_test = None
-    else:
-        std_train, std_test = data.split([0.8], shuffle=True,
-                                         seed=args.random_seed)
 
     if args.strategy == 1:
         columns = data.feature_names
     else:
         columns = [None]
 
-    for col in columns:
-        if col in data.protected_attribute_names + data.label_names:
-            continue
-        if args.xvalid:
+    if args.xvalid:
+        std_train = data.copy(deepcopy=True)
+        std_test = None
+        for col in columns:
+            if col in data.protected_attribute_names + data.label_names:
+                continue
             x, y = get_xy(std_train, keep_protected=keep_prot)
             kf = KFold(n_splits=5)
             for i, (train_indices, test_indices) in enumerate(kf.split(x, y)):
@@ -160,6 +156,20 @@ if __name__ == "__main__":
                 exp_test = std_train.subset(test_indices)
                 experiment(exp_train, exp_test, args, i, keep_prot=keep_prot,
                            col=col)
-        else:
-            experiment(std_train, std_test, args, 'n', keep_prot=keep_prot,
-                       col=col)
+    else:
+        m_perfs = []
+        for random_seed in utils.RANDOM_SEEDS:
+            std_train, std_test = data.split(
+                [0.8], shuffle=True, seed=random_seed)
+            for col in columns:
+                if col in data.protected_attribute_names + data.label_names:
+                    continue
+                m_perf = experiment(std_train, std_test, args,
+                                    'n', keep_prot=keep_prot, col=col)
+                m_perfs.append(m_perf)
+
+        perfs = pd.DataFrame(m_perfs)
+        stat_str = ['{}'.format(method)]
+        for s in ["AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]:
+            stat_str += [f"{perfs[s].mean():.2f} ({perfs[s].std():.2f})"]
+        print('\t & \t'.join(stat_str) + '\\\\')

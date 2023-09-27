@@ -202,8 +202,6 @@ if __name__ == "__main__":
         sep='\t'
     )
 
-    row = get_table_row(is_header=False, p_perf=p_perf, u_perf=u_perf,
-                        m_perf=m_perf, variable=variable,
-                        var_value=(args.data, args.uic, args.pic))
+    row = get_table_row(is_header=False, var_value=(args.data, args.uic, args.pic), m_perf=m_perf, variable=variable)
     print(row, flush=True)
     logging.StreamHandler().flush()

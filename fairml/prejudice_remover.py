@@ -66,7 +66,7 @@ class MyLRwPRType4(pr.LRwPRType4):
         # set instance variables
         self.n_s_ = ns
         self.n_sfv_ = 2
-        self.c_s_ = np.array([np.sum(s == si).astype(np.float)
+        self.c_s_ = np.array([np.sum(s == si).astype(float)
                               for si in range(self.n_sfv_)])
         self.n_features_ = X.shape[1]
         self.n_samples_ = X.shape[0]

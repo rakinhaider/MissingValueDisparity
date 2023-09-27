@@ -1,10 +1,5 @@
+numpy==1.21.6
 aif360[all]
 wget
-numpy
-pandas
 scipy
 fancyimpute
-fairlearn
-tensorflow
-tempeh
-notebook
