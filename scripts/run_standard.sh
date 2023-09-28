@@ -1,21 +1,35 @@
 #!/bin/bash
 
-echo "Table 10: Group-wise performance of NBC classifier after
-each missing value handling mechanism on PIMA dataset."
+dataset=$1
+
+dir_name=outputs/standard/${dataset}/tables
+mkdir -p ${dir_name};
+file_name=${dir_name}/sota_cls_table.tex
+echo ${file_name}
+echo "Table: Group-wise performance of NBC classifier after
+each missing value handling mechanism on ${dataset} dataset." >${file_name}
+
 for estimator in nb pr; do
-	echo 'Classifier' ${estimator}
-	for method in baseline mean mice knn; do
-		python -m experiment_standard_dataset\
-			  --dataset pima --method ${method}\
-			  --estimator ${estimator} --strategy 3\
-			  --priv-ic-prob 0.1 --unpriv-ic-prob 0.4;
-	done
+  echo ${estimator}
+  echo "\midrule" >>${file_name}
+  echo -n  "\multirow{4}{*}{${estimator}}" >>${file_name}
+  for method in baseline drop mean mice knn; do
+    echo ${method}
+    python -m experiment_standard_dataset\
+        --dataset ${dataset} --method ${method}\
+        --estimator ${estimator} --strategy 3\
+        --priv-ic-prob 0.1 --unpriv-ic-prob 0.4 >>${file_name};
+  done
 done
-echo 'Classifier' RBC
-for method in baseline mean mice knn; do
-	python -m experiment_standard_dataset\
-		  --dataset pima --method ${method}\
-		  --estimator lr --reduce --strategy 3\
-		  --priv-ic-prob 0.1 --unpriv-ic-prob 0.4;
+echo "\midrule" >>${file_name}
+echo -n  "\multirow{4}{*}{RBC}" >>${file_name}
+echo RBC;
+for method in baseline drop mean mice knn; do
+    echo ${method}
+    python -m experiment_standard_dataset\
+      --dataset ${dataset} --method ${method}\
+      --estimator lr --reduce --strategy 3\
+      --priv-ic-prob 0.1 --unpriv-ic-prob 0.4 >>${file_name} 2>/dev/null;
 done
+
 
