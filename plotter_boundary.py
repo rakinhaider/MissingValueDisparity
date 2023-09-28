@@ -1,16 +1,15 @@
 import os
 import warnings
-import pickle
+import logging
+warnings.filterwarnings("ignore")
+logging.getLogger().setLevel(logging.ERROR)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from math import sqrt
 from matplotlib.patches import Ellipse
 import matplotlib.pyplot as plt
 from plotter import set_rcparams, set_size
 
 # Suppresing tensorflow warning
-import plotter
-
-warnings.simplefilter(action='ignore')
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from utils import *
 
@@ -50,12 +49,16 @@ def plot_boundary(df, baseline, mod, bmod):
         plt.gca().add_patch(ellipse)
     plot_non_linear_boundary(mod, linestyles='solid')
     plot_non_linear_boundary(bmod, linestyles='dotted')
-    plt.legend(loc='upper left', fontsize=4)
+    legends = plt.legend(loc='upper left', fontsize='xx-small')
+    plt.xlabel(r'$x_1$', fontsize='x-small')
+    plt.ylabel(r'$x_2$', fontsize='x-small')
+    plt.xticks(fontsize='x-small')
+    plt.yticks(fontsize='x-small')
 
 
 if __name__ == "__main__":
 
-    figsize = 172
+    figsize = 241
 
     parser = get_parser()
     parser.add_argument('--distype', '-dt', default='ds_ccd',
@@ -138,9 +141,14 @@ if __name__ == "__main__":
     df, _ = test_fd.convert_to_dataframe()
     baseline_df, _ = baseline_test_fd.convert_to_dataframe()
     set_rcparams(fontsize=9)
-    plt.figure(figsize=set_size(figsize, .95, 0.6))
+    plt.figure(figsize=set_size(figsize, .95, 0.6),
+               tight_layout=True)
+    print(plt.gcf().get_size_inches())
     plot_boundary(df, baseline_df, mod, baseline_mod)
+    plt.tight_layout()
+    print(plt.gcf().get_size_inches())
     outdir = 'outputs/figures/boundary'
+    os.makedirs(outdir, exist_ok=True)
     fname = f'{outdir}/{args.distype}_{args.delta}_{args.group_shift}' \
             f'{"" if args.test_method == "none" else "_train"}.pdf'
     plt.savefig(fname, format='pdf')

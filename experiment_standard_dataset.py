@@ -1,13 +1,14 @@
-import os
-import pickle
 import warnings
-warnings.simplefilter(action='ignore')
+warnings.filterwarnings("ignore")
+import os
+import logging
+logging.getLogger().setLevel(logging.ERROR)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
+import pickle
 import utils
-
 from utils import *
-from datasets.standard_ccd_dataset import StandardCCDDataset
+import pandas as pd
+from datasets.standard.standard_ccd_dataset import StandardCCDDataset
 
 
 def save_models(args, mod_to_name_map, fold_id):
@@ -24,7 +25,9 @@ def save_models(args, mod_to_name_map, fold_id):
             args.calibrate if args.calibrate else 'None', args.strategy,
             1 if args.reduce else 0, 1 if args.xvalid else 0, fold_id
         )
-        pickle.dump(model, open(model_fname, 'wb'))
+        f = open(model_fname, 'wb')
+        pickle.dump(model, f)
+        f.close()
 
 
 def save_probas(args, proba, fold_id):
@@ -55,36 +58,18 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
                               method='baseline')
 
     keep_features = 'all'
-    cali_kwargs = {'calibrate': args.calibrate,
-                   'calibrate_cv': args.calibrate_cv}
     mod, m_perf = get_groupwise_performance(
         estimator, train, test, privileged=None,
-        keep_features=keep_features, **cali_kwargs
+        keep_features=keep_features
     )
 
-    # Keep prot is used from above.
+    keep_prot = kwargs['keep_prot']
     test_x, test_y = get_xy(test, keep_protected=keep_prot,
                             keep_features=keep_features)
     proba = mod.predict_proba(test_x)
     save_probas(args, proba, fold_id)
     save_models(args, {mod: 'mod'}, fold_id)
 
-    ######### Getting group-wise KL-divergence with test distribution #########
-    complete_pmod, _ = get_groupwise_performance(
-        estimator, std_train, std_train, privileged=True, **cali_kwargs)
-    complete_umod, _ = get_groupwise_performance(
-        estimator, std_train, std_train, privileged=False, **cali_kwargs)
-
-    if args.strategy == 1:
-        var_val = (args.dataset, col, args.method,
-                   args.unpriv_ic_prob, args.priv_ic_prob, fold_id)
-    else:
-        var_val = (args.method)
-
-    row = get_table_row(is_header=False, var_value=var_val,
-                        m_perf=m_perf, variable=variable)
-    # print(row, flush=True)
-    # logging.StreamHandler().flush()
     return m_perf
 
 
@@ -93,7 +78,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', '-dt',
-                        choices=['compas', 'bank', 'german', 'adult', 'pima'])
+                        choices=['compas', 'bank', 'german', 'adult',
+                                 'pima', 'heart', 'folkincome'])
     parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
     parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
 
@@ -119,7 +105,6 @@ if __name__ == "__main__":
     method = METHOD_SHORT_TO_FULL[args.method]
     estimator = get_estimator(args.estimator, False)
     keep_prot = args.reduce or (args.estimator == 'pr')
-    # keep_prot = False
     cali_kwargs = {'calibrate': args.calibrate,
                    'calibrate_cv': args.calibrate_cv}
 
@@ -165,11 +150,15 @@ if __name__ == "__main__":
                 if col in data.protected_attribute_names + data.label_names:
                     continue
                 m_perf = experiment(std_train, std_test, args,
-                                    'n', keep_prot=keep_prot, col=col)
+                                    'n', keep_prot=keep_prot, col=col,
+                                    random_seed=random_seed)
                 m_perfs.append(m_perf)
 
         perfs = pd.DataFrame(m_perfs)
         stat_str = ['{}'.format(method)]
         for s in ["AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]:
             stat_str += [f"{perfs[s].mean():.2f} ({perfs[s].std():.2f})"]
-        print('\t & \t'.join(stat_str) + '\\\\')
+        for s in ["AC", "SR", "FPR"]:
+            diffs = perfs[f'{s}_p'] - perfs[f'{s}_u']
+            stat_str += [f"{diffs.mean():.2f} ({diffs.std():.2f})"]
+        print('\t&\t' + '\t & \t'.join(stat_str) + '\\\\')

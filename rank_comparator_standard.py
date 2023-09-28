@@ -1,10 +1,9 @@
 import logging
+logging.getLogger().setLevel(logging.ERROR)
 import os
-import sys
 import warnings
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 import pandas as pd
 import itertools
 from datasets import StandardCCDDataset
@@ -15,7 +14,8 @@ from utils import *
 if __name__ == "__main__":
     parser = get_parser()
     parser.add_argument('--dataset', '-d', default='pima',
-                        choices=['compas', 'adult', 'pima'])
+                        choices=['compas', 'german', 'bank', 'adult',
+                                 'pima', 'heart', 'folkincome'])
     parser.add_argument('--priv-ic-prob', '-pic', default=0.1, type=float)
     parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
     parser.add_argument('--group-shift', '-gs', default=0, type=int)
@@ -97,13 +97,12 @@ if __name__ == "__main__":
     for rs in RANDOM_SEEDS:
         probas = []
         test_x, test_y = get_xy(test_fd, keep_protected=True)
-        model_features = test_x.columns[:-1]
-        test_x['label'] = test_y
+        test_x[test_fd.label_names[0]] = test_y
         for method in models.keys():
             mod = models[method][rs]
             logging.info(mod.theta_)
             logging.info(mod.var_)
-            pred_proba = mod.predict_proba(test_x[model_features])
+            pred_proba = mod.predict_proba(test_x[mod.feature_names_in_])
             test_x[method + "_proba"] = pred_proba[:, int(data.favorable_label)]
             test_x[method + "_rank"] = test_x[method + "_proba"].rank()
 
@@ -113,7 +112,7 @@ if __name__ == "__main__":
         test_x.columns = new_columns
         logging.info(test_x.columns)
         test_x.to_csv('rank_{}.tsv'.format(dataset_name), sep='\t')
-        group_condition = test_fd.protected_attribute_names + ['label']
+        group_condition = test_fd.protected_attribute_names + test_fd.label_names
         grouped = test_x.groupby(by=group_condition)
         for (s, y), grp in grouped:
             proba_comp = grp['mean_proba'] - grp['base_proba']
@@ -126,9 +125,12 @@ if __name__ == "__main__":
             stats[(s, y, rs)] = stat
 
     stats = pd.DataFrame(stats).transpose()
-    for s, y in itertools.product([0, 1], [0, 1]):
-        stat_str = ['&\t({}, {})'.format('u' if s == 0 else 'p',
-                                            '-' if y == 0 else '+')]
+    all_s = np.unique(train_fd.protected_attributes, return_counts=False)
+    all_y = [train_fd.favorable_label, train_fd.unfavorable_label]
+    for s, y in itertools.product(all_s, all_y):
+        stat_str = ['&\t({}, {})'.format(
+            'u' if s == 0 else 'p',
+            '+' if y == train_fd.favorable_label else '-')]
         stat = stats.loc[s, y, :]
         stat_str += [f"{stat[0].mean():.2f} ({stat[0].std():.2f})"]
         stat_str += [f"{stat[1].mean():.2f} ({stat[1].std():.2f})"]
