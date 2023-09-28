@@ -1,9 +1,9 @@
 import logging
 import argparse
 import numpy as np
-import pandas as pd
-
-from datasets import DatasetFactory, PimaDataset
+from datasets import (
+    DatasetFactory, PimaDataset, HeartDataset, FolkIncomeDataset
+)
 
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
@@ -73,8 +73,8 @@ def get_standard_dataset(dataset_name):
             # attribute for "sex" which we do not
             # consider in this evaluation
             protected_attribute_names=['age'],
-            # age >=25 is considered privileged
-            privileged_classes=[lambda x: x >= 25],
+            # age > 25 is considered privileged
+            privileged_classes=[lambda x: x > 25],
             # ignore sex-related attributes
             features_to_drop=['personal_status', 'sex'],
         )
@@ -98,6 +98,14 @@ def get_standard_dataset(dataset_name):
         dataset = PimaDataset()
         dataset.privileged_groups = [{'Age': 1}]
         dataset.unprivileged_groups = [{'Age': 0}]
+    elif dataset_name == 'heart':
+        dataset = HeartDataset()
+        dataset.privileged_groups = [{'age': 1}]
+        dataset.unprivileged_groups = [{'age': 0}]
+    elif dataset_name == 'folkincome':
+        dataset = FolkIncomeDataset()
+        dataset.privileged_groups = [{'AGEP': 1}]
+        dataset.unprivileged_groups = [{'AGEP': 0}]
     else:
         raise ValueError('Dataset name must be one of '
                          'compas, german, bank')
@@ -305,8 +313,9 @@ def get_groupwise_performance(estimator, train_fd, test_fd=None,
                               privileged=None, params=None, keep_features='all',
                               **kwargs):
 
-    train_fd = get_samples_by_group(train_fd, privileged)
-    test_fd = get_samples_by_group(test_fd, privileged)
+    if privileged is not None:
+        train_fd = get_samples_by_group(train_fd, privileged)
+        test_fd = get_samples_by_group(test_fd, privileged)
     if not params:
         params = get_model_params(estimator, train_fd)
 
