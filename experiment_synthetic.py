@@ -1,12 +1,13 @@
 import logging
 import os
-import sys
 import warnings
+import pandas as pd
+from tqdm import tqdm
 
 # Suppresing tensorflow warning
+logging.getLogger().setLevel(logging.ERROR)
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 from utils import *
 
 if __name__ == "__main__":
@@ -79,20 +80,30 @@ if __name__ == "__main__":
 
     logging.info(kwargs)
 
-    train_fd, test_fd = get_synthetic_train_test_split(
-        train_random_state=47, test_random_state=41, type=args.distype,
-        n_samples=n_samples, n_features=n_feature,
-        test_method=test_method, **kwargs)
+    m_perfs = []
+    for rs in tqdm(RANDOM_SEEDS, desc=f'Running {method} '
+                                      f'with deltas {group_shift}'):
+        train_fd, test_fd = get_synthetic_train_test_split(
+            train_random_state=rs, test_random_state=41, type=args.distype,
+            n_samples=n_samples, n_features=n_feature,
+            test_method=test_method, **kwargs)
 
-    pmod, p_perf = get_groupwise_performance(
-        estimator, train_fd, test_fd, privileged=True)
-    umod, u_perf = get_groupwise_performance(
-        estimator, train_fd, test_fd, privileged=False)
-    mod, m_perf = get_groupwise_performance(
-        estimator, train_fd, test_fd, privileged=None)
+        pmod, p_perf = get_groupwise_performance(
+            estimator, train_fd, test_fd, privileged=True)
+        umod, u_perf = get_groupwise_performance(
+            estimator, train_fd, test_fd, privileged=False)
+        mod, m_perf = get_groupwise_performance(
+            estimator, train_fd, test_fd, privileged=None)
 
-    row = get_table_row(is_header=False, var_value=(args.method),
-                        m_perf=m_perf, variable=variable)
-    print(row)
+        m_perfs.append(m_perf)
+        row = get_table_row(is_header=False, var_value=(args.method),
+                            m_perf=m_perf, variable=variable)
 
-    sys.stdout.flush()
+    m_perfs = pd.DataFrame(m_perfs)
+    m_perfs = m_perfs[["AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]]
+
+    stat_strs = [f'{method}']
+    for s in ["AC", "SR", "FPR"]:
+        diffs = m_perfs[f'{s}_p'] - m_perfs[f'{s}_u']
+        stat_strs += [f"{diffs.mean():.2f} ({diffs.std():.2f})"]
+    print("\t".join(stat_strs))
