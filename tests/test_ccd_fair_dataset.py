@@ -1,6 +1,6 @@
 from aif360.metrics.binary_label_dataset_metric import BinaryLabelDatasetMetric
 from unittest import TestCase
-from datasets.ccd_fair_dataset import CCDFairDataset
+from datasets.synthetic.ccd_fair_dataset import CCDFairDataset
 import numpy as np
 
 

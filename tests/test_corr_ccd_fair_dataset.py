@@ -1,6 +1,6 @@
 from aif360.metrics.binary_label_dataset_metric import BinaryLabelDatasetMetric
 from unittest import TestCase
-from datasets.correlated_ccd_fair_dataset import CorrelatedCCDFairDataset
+from datasets.synthetic.correlated_ccd_fair_dataset import CorrelatedCCDFairDataset
 import numpy as np
 from math import sqrt
 

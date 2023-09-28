@@ -1,7 +1,7 @@
-from .mvd_fair_dataset import MVDFairDataset
-from .ccd_fair_dataset import CCDFairDataset
-from .ds_ccd_fair_dataset import DSCCDFairDataset
-from .correlated_ccd_fair_dataset import CorrelatedCCDFairDataset
+from datasets.synthetic.mvd_fair_dataset import MVDFairDataset
+from datasets.synthetic.ccd_fair_dataset import CCDFairDataset
+from datasets.synthetic.ds_ccd_fair_dataset import DSCCDFairDataset
+from datasets.synthetic.correlated_ccd_fair_dataset import CorrelatedCCDFairDataset
 
 class DatasetFactory():
     def get_dataset(self, type, **kwargs):

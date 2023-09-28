@@ -1,6 +1,6 @@
 import numpy as np
 from unittest import TestCase
-from datasets.standard_ccd_dataset import StandardCCDDataset
+from datasets.standard.standard_ccd_dataset import StandardCCDDataset
 from utils import get_standard_dataset
 
 

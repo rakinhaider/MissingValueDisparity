@@ -1,11 +1,8 @@
-import logging
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-import numpy as np
-import pandas as pd
 from utils import *
-from datasets.standard_ccd_dataset import StandardCCDDataset
+from datasets.standard.standard_ccd_dataset import StandardCCDDataset
 
 
 def get_indices(dataset, condition=None, label=None):

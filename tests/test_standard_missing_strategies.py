@@ -1,7 +1,5 @@
-import numpy as np
-import pandas as pd
 from unittest import TestCase
-from datasets.standard_missing_strategies import *
+from datasets.standard.standard_missing_strategies import *
 
 
 class TestStandardMissingStrategies(TestCase):

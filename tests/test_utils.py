@@ -17,7 +17,6 @@ class TestUtils(TestCase):
 
     def test_get_standard_dataset_german(self):
         data = get_standard_dataset('german')
-        print(data)
         assert data.privileged_groups == [{'age': 1}]
         assert data.unprivileged_groups == [{'age': 0}]
         df = data.metadata['params']['df']

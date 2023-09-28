@@ -1,5 +1,5 @@
 import numpy as np
-from datasets.mvd_fair_dataset import FairDataset
+from datasets.synthetic.mvd_fair_dataset import FairDataset
 from unittest import TestCase
 
 

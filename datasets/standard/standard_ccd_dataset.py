@@ -1,8 +1,6 @@
-import logging
-import numpy as np
 from scipy import sparse
-from .ccd_fair_dataset import CCDFairDataset
-from .standard_missing_strategies import *
+from datasets.synthetic.ccd_fair_dataset import CCDFairDataset
+from datasets.standard.standard_missing_strategies import *
 
 
 class StandardCCDDataset(CCDFairDataset):
