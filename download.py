@@ -42,6 +42,11 @@ if __name__ == "__main__":
         baseurl = 'https://archive.ics.uci.edu/ml/machine-learning-databases/' \
                   'statlog/german/'
 
+        if os.path.exists(dir):
+            print("Target directory doesn't exist. Is AIF360 installed?"
+                  "Are you using the correct AIF360 Folder directory?")
+            exit()
+
         for file in ['german.data', 'german.doc']:
             target = os.path.join(dir, file)
             if not os.path.exists(target):
@@ -65,22 +70,12 @@ if __name__ == "__main__":
             print('Files already exists.')
             exit()
         wget.download(baseurl + file_name, target)
-        """
-        df = pd.read_csv(target, header=None,
-            names=['#pregnant', 'Plasma glucose concentration',
-                   'Diastolic blood pressure (mm Hg)',
-                   'Triceps skinfold thickness (mm)',
-                   '2-Hour serum insulin (mu U/ml)',
-                   'Body mass index (weight in kg/(height in m)^2)',
-                   'Diabetes pedigree function', 'Age','Class'])
-        df.to_csv(target, index=False)
-        """
         columns=['#pregnant', 'Plasma glucose concentration',
-                   'Diastolic blood pressure (mm Hg)',
-                   'Triceps skinfold thickness (mm)',
-                   '2-Hour serum insulin (mu U/ml)',
-                   'Body mass index (weight in kg/(height in m)^2)',
-                   'Diabetes pedigree function', 'Age', 'Class']
+                 'Diastolic blood pressure (mm Hg)',
+                 'Triceps skinfold thickness (mm)',
+                 '2-Hour serum insulin (mu U/ml)',
+                 'Body mass index (weight in kg/(height in m)^2)',
+                 'Diabetes pedigree function', 'Age', 'Class']
 
         temp_file = os.path.join(dir, 'temp.csv')
         f = open(temp_file, 'w')
