@@ -1,5 +1,6 @@
 numpy==1.21.6
-aif360[all]
+aif360[LawSchoolGPA, OptimPreproc, AdversarialDebiasing, Reductions]
 wget
 scipy
 fancyimpute
+folktables
