@@ -30,11 +30,7 @@ if __name__ == "__main__":
     parser.add_argument('--test-method', '-tm', default='none',
                         choices=['none', 'train'])
     parser.add_argument('--header-only', default=False, action='store_true')
-    # There is a mismatch in numbering of strategies.
-    # args.strategy == 0 is strategy 2 in manuscript
-    # args.strategy == 2 is strategy 1 in manuscript
-    # args.strategy == 3 is strategy 3 in manuscript
-    parser.add_argument('--strategy', default=2, type=int)
+    parser.add_argument('--strategy', default=1, type=int)
     args = parser.parse_args()
 
     protected = ["sex"]

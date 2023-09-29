@@ -8,6 +8,7 @@ import pickle
 import utils
 from utils import *
 import pandas as pd
+from tqdm import tqdm
 from datasets.standard.standard_ccd_dataset import StandardCCDDataset
 
 
@@ -73,9 +74,7 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
     return m_perf
 
 
-
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', '-dt',
                         choices=['compas', 'bank', 'german', 'adult',
@@ -85,7 +84,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--method', default='mean',
                         choices=['baseline', 'drop', 'mean',
-                                 'mode', 'mice', 'missForest', 'knn'])
+                                 'mode', 'mice', 'missForest', 'knn', 'softimpute'])
     parser.add_argument('--reduce', '-r', action='store_true', default=False)
     parser.add_argument('--calibrate', '-c', default=None,
                         choices=['sigmoid', 'isotonic'])
@@ -112,7 +111,7 @@ if __name__ == "__main__":
     level = logging.getLevelName(args.log_level)
     logging.basicConfig(level=level, format=LOG_FORMAT)
 
-    if args.strategy == 1:
+    if args.strategy == 0:
         variable = ('col', 'method')
     else:
         variable = ('method')
@@ -123,7 +122,7 @@ if __name__ == "__main__":
 
     data = get_standard_dataset(args.dataset)
 
-    if args.strategy == 1:
+    if args.strategy == 0:
         columns = data.feature_names
     else:
         columns = [None]
@@ -143,7 +142,7 @@ if __name__ == "__main__":
                            col=col)
     else:
         m_perfs = []
-        for random_seed in utils.RANDOM_SEEDS:
+        for random_seed in tqdm(utils.RANDOM_SEEDS):
             std_train, std_test = data.split(
                 [0.8], shuffle=True, seed=random_seed)
             for col in columns:
@@ -155,10 +154,10 @@ if __name__ == "__main__":
                 m_perfs.append(m_perf)
 
         perfs = pd.DataFrame(m_perfs)
-        stat_str = ['{}'.format(method)]
-        for s in ["AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]:
-            stat_str += [f"{perfs[s].mean():.2f} ({perfs[s].std():.2f})"]
+        stat_str = []
+        # for s in ["AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]:
+        #     stat_str += [f"{perfs[s].mean():.2f} ({perfs[s].std():.2f})"]
         for s in ["AC", "SR", "FPR"]:
             diffs = perfs[f'{s}_p'] - perfs[f'{s}_u']
             stat_str += [f"{diffs.mean():.2f} ({diffs.std():.2f})"]
-        print('\t&\t' + '\t & \t'.join(stat_str) + '\\\\')
+        print('\t' + '\t'.join(stat_str))

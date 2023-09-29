@@ -42,24 +42,27 @@ class StandardCCDDataset(CCDFairDataset):
                           2: 'rand_one_col_by_samples',
                           3: 'rand_many_col_by_samples'}
         strategy_name = strategy_names[strategy]
-        if strategy_name == 'by_most_corr_col':
-            missing_matrix = missing_by_top_corr_column(df, uic, pic, pa_names, label_names, rng)
-        elif strategy_name == 'by_column':
-            col_name = kwargs.get('missing_column_name')
-            if col_name is None:
-                raise ValueError("Must define column "
-                                 "for missing by column strategy")
 
-            missing_matrix = missing_by_column(
-                df, uic, pic, pa_names, col_name, rng
-            )
-        elif strategy_name == 'rand_one_col_by_samples':
+        if strategy == 1:
             missing_matrix = missing_single_col_by_sample(
                 df, uic, pic, pa_names, label_names, rng
             )
-        elif strategy_name == 'rand_many_col_by_samples':
+        elif strategy == 2:
+            missing_matrix = missing_by_top_corr_column(df, uic, pic, pa_names,
+                                                        label_names, rng)
+        elif strategy == 3:
             missing_matrix = missing_all_cols_by_sample(
                 df, uic, pic, pa_names, label_names, rng
             )
+        # TODO: Remove the following unused code segment.
+        # elif strategy == ??:
+        #     col_name = kwargs.get('missing_column_name')
+        #     if col_name is None:
+        #         raise ValueError("Must define column "
+        #                          "for missing by column strategy")
+        #     missing_matrix = missing_by_column(
+        #         df, uic, pic, pa_names, col_name, rng
+        #     )
+
         return sparse.csr_matrix(missing_matrix)
 
