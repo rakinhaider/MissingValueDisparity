@@ -102,7 +102,7 @@ if __name__ == "__main__":
     m_perfs = pd.DataFrame(m_perfs)
     m_perfs = m_perfs[["AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]]
 
-    stat_strs = [f'{method}']
+    stat_strs = []
     for s in ["AC", "SR", "FPR"]:
         diffs = m_perfs[f'{s}_p'] - m_perfs[f'{s}_u']
         stat_strs += [f"{diffs.mean():.2f} ({diffs.std():.2f})"]

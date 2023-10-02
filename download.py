@@ -42,8 +42,8 @@ if __name__ == "__main__":
         baseurl = 'https://archive.ics.uci.edu/ml/machine-learning-databases/' \
                   'statlog/german/'
 
-        if os.path.exists(dir):
-            print("Target directory doesn't exist. Is AIF360 installed?"
+        if not os.path.exists(dir):
+            print(f"Target directory {dir} doesn't exist. Is AIF360 installed?"
                   "Are you using the correct AIF360 Folder directory?")
             exit()
 

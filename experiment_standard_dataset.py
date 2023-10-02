@@ -160,4 +160,4 @@ if __name__ == "__main__":
         for s in ["AC", "SR", "FPR"]:
             diffs = perfs[f'{s}_p'] - perfs[f'{s}_u']
             stat_str += [f"{diffs.mean():.2f} ({diffs.std():.2f})"]
-        print('\t' + '\t'.join(stat_str))
+        print('\t'.join(stat_str))

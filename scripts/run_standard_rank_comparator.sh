@@ -2,6 +2,5 @@
 
 dataset=$1
 
-echo "\midrule"
-echo -n "\multirow{4}{*}{\texttt{${dataset}}}"
+echo -n -e "\\multirow{4}{*}{${dataset}}\t"
 python -m rank_comparator_standard -d ${dataset} --strategy 1

@@ -1,12 +1,12 @@
 import itertools
 import os
 import warnings
-
-import pandas as pd
-
+import logging
+logging.getLogger().setLevel(logging.ERROR)
 warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+import pandas as pd
 from utils import *
 from collections import defaultdict
 
@@ -128,11 +128,9 @@ if __name__ == "__main__":
 
         test_x.columns = [0, 1, 'sex', 'label', 'base_proba', 'base_rank',
                           'mean_proba', 'mean_rank']
-        test_x.to_csv('rank.tsv', sep='\t')
+        # test_x.to_csv('rank.tsv', sep='\t')
         grouped = test_x.groupby(by=['sex', 'label'])
         for (s, y), grp in grouped:
-            # print(tup)
-            # print(grp.describe())
             proba_comp = grp['mean_proba'] - grp['base_proba']
             rank_comp = grp['mean_rank'] - grp['base_rank']
             stat = [(proba_comp < 0).sum() * 100,
@@ -144,7 +142,7 @@ if __name__ == "__main__":
 
     stats = pd.DataFrame(stats).transpose()
     for s, y in itertools.product([0, 1], [0, 1]):
-        stat_str = ['&\t&\t({}, {})'.format('u' if s == 0 else 'p',
+        stat_str = ['\t\t({}, {})'.format('u' if s == 0 else 'p',
                                       '-' if y == 0 else '+')]
         stat = stats.loc[s, y, :]
         stat_str += [f"{stat[0].mean():.2f} ({stat[0].std():.2f})"]
@@ -153,7 +151,7 @@ if __name__ == "__main__":
         stat_str += [f"{stat[3].mean():.2f} ({stat[3].std():.2f})"]
         stat_str += [f"{stat[4].mean():.2f} ({stat[4].std():.2f})"]
         stat_str += [f"{stat[5].mean():.2f}"]
-        print('\t & \t'.join(stat_str) + '\\\\')
+        print('\t'.join(stat_str) + '\\\\')
     pd.set_option('display.max_columns', None)
 
     stats.columns = ['proba_less', 'proba_great', 'proba_change',

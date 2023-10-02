@@ -122,9 +122,9 @@ if __name__ == "__main__":
 
     stats = pd.DataFrame(stats).transpose()
     all_s = np.unique(train_fd.protected_attributes, return_counts=False)
-    all_y = [train_fd.favorable_label, train_fd.unfavorable_label]
+    all_y = [train_fd.unfavorable_label, train_fd.favorable_label]
     for s, y in itertools.product(all_s, all_y):
-        stat_str = ['&\t({}, {})'.format(
+        stat_str = ['\t\t({}, {})'.format(
             'u' if s == 0 else 'p',
             '+' if y == train_fd.favorable_label else '-')]
         stat = stats.loc[s, y, :]
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         stat_str += [f"{stat[3].mean():.2f} ({stat[3].std():.2f})"]
         stat_str += [f"{stat[4].mean():.2f} ({stat[4].std():.2f})"]
         stat_str += [f"{stat[5].mean():.2f}"]
-        print('\t & \t'.join(stat_str) + '\\\\')
+        print('\t'.join(stat_str))
     pd.set_option('display.max_columns', None)
     stats.columns=['proba_less', 'proba_great', 'proba_change',
                    'rank_less', 'rank_great', 'rank_change']
