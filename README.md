@@ -2,17 +2,17 @@
 
 ## Description
 
-In this project, we demonstrate disparity in rates of missing values tend
+In this project, we show that disparity in the rates of missing values tend
 to introduce bias in machine learning systems even if the training data is free
 from historical biases. We train Gaussian Naive Bayes classifiers on
 synthetic fair balanced dataset *(SFBD)* of 10000
-samples with 2 or 10 features. Results show that missing value disparity
+samples with 2 or more feature. Results show that missing value disparity
 skew the model closer to one group than the other. We also experiment
-with real-world datasets COMPAS, Adult and PIMA. We observe similar
-discriminating patterns. Missing value disparity induces bias by changing
-the prediction probabilities. In cases where the change is too low to
-alter the original prediction (obtained from baseline without any missing
-values), it unfairly re-orders the relative ranking of the individuals.
+with real-world datasets COMPAS, FolkIncome, German, PIMA and Heart. We observe 
+similar discriminating patterns. Missing value disparity induces bias 
+by changing the prediction probabilities. In cases where the change is too 
+low to alter the original prediction (obtained from baseline without any 
+missing values), it unfairly re-orders the relative ranking of the individuals.
 
 ## Getting Started
 
@@ -21,14 +21,18 @@ values), it unfairly re-orders the relative ranking of the individuals.
 The codes are built and tested with the following
 system configurations.
 
-|  Item   |  Version                      |
-| ------- | ------------------------------|
-| OS      | Linux (Ubuntu 20.04.2 64bit)  |
-| Python  | 3.8.10                        |
-| pip     |  21.1.1                             |
+|  Item   | Version                      |
+| ------- |------------------------------|
+| OS      | Linux (Ubuntu 22.04.3 64bit) |
+| Python  | 3.10.12                      |
+| pip     | 22.0.2                       |
 
 ### Randomization Seeds
-The following seeds where used to ensure reproducibility of the results. Further experiments can be carried out by trying out different randomization seeds.
+The reported results are averaged over 10 random initiations of the training 
+dataset (either generated synthetically or by a train-test split of the 
+dataset). The following seeds where used to maintain reproducibility of the 
+results. Further experiments can be carried out by trying out different 
+randomization seeds.
 
 | Dataset |  Case                         |  Seed    |
 | ------- | ------- | ------------------------------|
@@ -69,18 +73,18 @@ python -m download --aif360-folder <aif360-folder>
 ```
 Typically it is,
 ```bash
-python -m download --aif360-folder myvenv/lib/python3.8/site-packages/aif360/
+python -m download --aif360-folder myvenv/lib/python3.10/site-packages/aif360/
 ```
-Now download the Adult and the PIMA dataset with the following command.
+Now download the PIMA and the Heart dataset with the following command.
 ```bash
 python -m download --dataset pima
-python -m download --dataset adult
+python -m download --dataset heart
 ```
 
-### Executing program
+### Reproducing Results
 
-* To generate all the results use *run.sh*
-* The following command will generate all the tables in the paper
+* To generate all the results use *scripts/run.sh*
+* The following command will generate all the tables in the manuscript
 ```bash
 chmod +x scripts/run.sh
 ./scripts/run.sh
@@ -100,4 +104,8 @@ Please ignore **tensorflow** related warnings.
 
 ## Authors
 
-Anonymous Authors
+<p>
+Chowdhury Mohammad Rakin Haider, Chris Clifton<br>
+Purdue Univeristy<br>
+West Lafayette, IN<br>
+Emails: chaider@purdue.edu, clifton@cs.purdue.edu
