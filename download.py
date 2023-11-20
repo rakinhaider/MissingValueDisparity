@@ -58,7 +58,8 @@ if __name__ == "__main__":
 
         for file in ['adult.data', 'adult.test', 'adult.names']:
             target = os.path.join(dir, file)
-            wget.download(baseurl + file, target, bar=None)
+            if not os.path.exists(target):
+                wget.download(baseurl + file, target, bar=None)
     elif args.dataset == 'pima':
         file_name = 'pima-indians-diabetes.csv'
         baseurl = 'https://nrvis.com/data/mldata/'
@@ -87,3 +88,8 @@ if __name__ == "__main__":
         f.close()
         os.remove(target)
         os.rename(temp_file, target)
+    elif args.dataset == 'heart':
+        raise NotImplementedError('Download heart dataset from '
+                                  'https://www.kaggle.com/datasets/'
+                                  'sulianova/'
+                                  'cardiovascular-disease-dataset/')
