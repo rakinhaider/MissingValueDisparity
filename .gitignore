@@ -6,5 +6,6 @@ myvenv/**/*
 **/*.tsv
 **/*.pdf
 **/*.txt
+**/*.png
 outputs/**/*.pkl
 data/raw/**/*.csv

@@ -15,24 +15,30 @@ from utils import *
 
 
 def plot_non_linear_boundary(mod, color='black', linestyles='solid'):
-    xlim = (-15, 25)
-    ylim = (-15, 25)
+    xlim = (-25, 25)
+    ylim = (-25, 25)
     xx, yy = np.meshgrid(np.linspace(xlim[0], xlim[1], 50),
                          np.linspace(ylim[0], ylim[1], 50))
     Z = mod.predict_proba(np.c_[xx.ravel(), yy.ravel()])
     Z = Z[:, 1].reshape(xx.shape)
-    plt.gca().contour(xx, yy, Z, [0.5], colors=color, linestyles=linestyles)
+    plt.gca().contour(xx, yy, Z, [0.5], colors=color, linestyles=linestyles,
+                      linewidths=3)
 
 
 def plot_boundary(df, baseline, mod, bmod):
-    colors = [['tab:olive', 'tab:green'], ['tab:pink', 'tab:red']]
+    colors = [['red', 'green'], ['lightcoral', 'olive']]
     grouped = df.groupby(by=['sex', 'label'])
 
     for (s, y), grp in grouped:
         s, y = int(s), int(y)
-        c = colors[y][s]
-        selected = grp.loc[np.random.choice(grp.index, 100)]
-        plt.scatter(selected['0'], selected['1'], c=c, s=3)
+        c = colors[s][y]
+        selected = grp.loc[np.random.choice(grp.index, 500)]
+        plt.scatter(selected['0'], selected['1'], c=c,
+                    label=f"({'u' if s == 0 else 'p'}, "
+                          f"{'-' if y == 0 else '+'})", alpha=0.8)
+    for (s, y), grp in grouped:
+        s, y = int(s), int(y)
+        c = colors[s][y]
         x_mean = grp['0'].mean()
         y_mean = grp['1'].mean()
         width = 2 * sqrt(5.991) * grp['0'].std()
@@ -42,23 +48,22 @@ def plot_boundary(df, baseline, mod, bmod):
         #             f"{'-' if y == 0 else '+' })")
         print(s, y, center, width, height)
         ellipse = Ellipse(xy=center, width=width, height=height,
-                          color=c,
-                          fill=False, linewidth=1,
-                          label=f"({'u' if s == 0 else 'p'}, "
-                                f"{'-' if y == 0 else '+' })")
+                          color='yellowgreen' if y == 1 else 'darkred',
+                          fill=False, linewidth=3,
+                          )
         plt.gca().add_patch(ellipse)
     plot_non_linear_boundary(mod, linestyles='solid')
     plot_non_linear_boundary(bmod, linestyles='dotted')
-    legends = plt.legend(loc='upper left', fontsize='xx-small')
-    plt.xlabel(r'$x_1$', fontsize='x-small')
-    plt.ylabel(r'$x_2$', fontsize='x-small')
-    plt.xticks(fontsize='x-small')
-    plt.yticks(fontsize='x-small')
+    legends = plt.legend(loc='upper left', fontsize=12)
+    plt.xlim((-18, 25))
+    plt.ylim((-15, 25))
+    plt.xlabel(r'$x_1$', fontsize=15)
+    plt.ylabel(r'$x_2$', fontsize=15)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
 
 
 if __name__ == "__main__":
-
-    figsize = 241
 
     parser = get_parser()
     parser.add_argument('--distype', '-dt', default='ds_ccd',
@@ -140,15 +145,13 @@ if __name__ == "__main__":
 
     df, _ = test_fd.convert_to_dataframe()
     baseline_df, _ = baseline_test_fd.convert_to_dataframe()
-    set_rcparams(fontsize=9)
-    plt.figure(figsize=set_size(figsize, .95, 0.6),
-               tight_layout=True)
     print(plt.gcf().get_size_inches())
     plot_boundary(df, baseline_df, mod, baseline_mod)
     plt.tight_layout()
     print(plt.gcf().get_size_inches())
-    outdir = 'outputs/figures/boundary'
+    outdir = 'poster/figures/'
     os.makedirs(outdir, exist_ok=True)
+    filetype='pdf'
     fname = f'{outdir}/{args.distype}_{args.delta}_{args.group_shift}' \
-            f'{"" if args.test_method == "none" else "_train"}.pdf'
-    plt.savefig(fname, format='pdf')
+            f'{"" if args.test_method == "none" else "_train"}.{filetype}'
+    plt.savefig(fname, format=filetype)
