@@ -39,7 +39,7 @@ echo "Table 6: Disparities in group-wise accuracies, base prediction
 rates and false positive rates of NBC classifiers on PIMA with
 missing value disparity induced using different strategies."
 ./scripts/run_standard_strategy_experiment.sh 2>/dev/null
-python -m tsv_to_tex_converter.py\
+python -m tsv_to_tex_converter\
   --path outputs/standard/tables/pima/strategies.tsv
 
 echo "Table 7: Disparities in group-wise accuracies, base prediction rates
@@ -51,7 +51,7 @@ echo "######## Uncomment the following commands to generate results. ########"
 
 # Takes quite long time. Uncomment if desired.
 # Progress bars are printed.
-# ./scripts/run_standard.sh folkincome
+./scripts/run_standard.sh folkincome
 # If progress not desired, use the following redirection.
 # ./scripts/run_standard.sh folkincome 2>/dev/null
 # Then run the following command.

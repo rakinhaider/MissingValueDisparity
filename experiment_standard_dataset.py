@@ -92,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument('--xvalid', '-x', default=False, action='store_true')
     parser.add_argument('--strategy', '-s', type=int, default=0)
     parser.add_argument('--estimator', '-e', default='cat_nb',
-                        choices=['cat_nb', 'nb', 'lr', 'svm', 'pr', 'dt'])
+                        choices=['cat_nb', 'nb', 'lr', 'svm', 'pr', 'nn', 'dt'])
     parser.add_argument('--header-only', default=False, action='store_true')
     parser.add_argument('--print-header', default=False, action='store_true')
 

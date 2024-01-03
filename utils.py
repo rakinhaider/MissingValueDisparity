@@ -11,6 +11,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
 from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
 from sklearn.model_selection import KFold
+from sklearn.neural_network import MLPClassifier
 from aif360.metrics import ClassificationMetric
 from aif360.datasets import GermanDataset, BankDataset, AdultDataset, CompasDataset, BinaryLabelDataset
 from fairml import ExponentiatedGradientReduction, PrejudiceRemover
@@ -57,7 +58,7 @@ def get_estimator(estimator, reduce):
     elif estimator == 'dt':
         return DecisionTreeClassifier
     elif estimator == 'nn':
-        pass
+        return MLPClassifier
     elif estimator == 'pr':
         return PrejudiceRemover
 
@@ -199,7 +200,8 @@ def get_xy(data, keep_protected=False, keep_features='all'):
 
 def get_model_params(model_type, train_fd):
     if model_type == SVC:
-        params = {'probability': True}
+        params = {'probability': True, 'verbose': False,
+                  'max_iter': 100, 'shrinking': True}
     # elif model_type == CategoricalNB:
         # imputed_df, _ = get_xy(train_fd)
         # min_categories = []
@@ -235,6 +237,10 @@ def get_model_params(model_type, train_fd):
             'all_sensitive_attributes': train_fd.protected_attribute_names,
             'privileged_value': 1.0
         }
+    elif model_type == MLPClassifier:
+        params = {'solver': 'lbfgs', 'alpha': 1e-5,
+                  'hidden_layer_sizes': (5, 5, 2),
+                  'random_state': 1}
     else:
         params = {}
     return params

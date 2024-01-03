@@ -11,20 +11,20 @@ import pandas as pd
 import importlib.util
 from sklearn.base import BaseEstimator, ClassifierMixin
 from scipy.optimize import fmin_cg
-
+from .kamfadm2012ecmlpkdd.fadm.lr import pr as pr
 
 def _load_modules():
     # Loading pr
     k_path = aif360.__path__[0]
     pr_path = os.path.join(k_path, 'algorithms', 'inprocessing',
-                           'kamfadm-2012ecmlpkdd', 'fadm/lr', 'pr.py')
+                           'kamfadm2012ecmlpkdd', 'fadm/lr', 'pr.py')
     spec = importlib.util.spec_from_file_location('pr', pr_path)
     pr = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(pr)
     return pr
 
 
-pr = _load_modules()
+# pr = _load_modules()
 
 
 class MyLRwPRType4(pr.LRwPRType4):
@@ -133,11 +133,11 @@ class PrejudiceRemover(BaseEstimator, ClassifierMixin):
         x = []
         for col in df:
             if col != class_attr and col not in sensitive_attrs:
-                x.append(np.array(df[col].values, dtype=np.float64))
+                x.append(np.array(df[col].values, dtype=float))
         x.append(np.array(single_sensitive.isin(privileged_vals),
-                          dtype=np.float64))
+                          dtype=float))
         x.append(np.array(df[class_attr] == positive_class_val,
-                          dtype=np.float64))
+                          dtype=float))
 
         fd, name = tempfile.mkstemp()
         os.close(fd)
@@ -178,7 +178,7 @@ class PrejudiceRemover(BaseEstimator, ClassifierMixin):
         return self.classes_[self.model.predict(X)]
 
     def predict_proba(self, X):
-        """Probability estimates.
+        """Probability estimatesnp.float.
 
         The returned estimates for all classes are ordered by the label of
         classes.
