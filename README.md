@@ -104,8 +104,4 @@ Please ignore **tensorflow** related warnings.
 
 ## Authors
 
-<p>
-Chowdhury Mohammad Rakin Haider, Chris Clifton<br>
-Purdue Univeristy<br>
-West Lafayette, IN<br>
-Emails: chaider@purdue.edu, clifton@cs.purdue.edu
+Anonymous Authors
