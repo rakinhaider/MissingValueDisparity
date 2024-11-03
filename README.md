@@ -1,14 +1,14 @@
-# A Study on Bias Caused by Missing Data Disparity
+# Introduced Bias From Missing Value Disparity
 
 ## Description
 
-In this project, we show that disparity in the rates of missing values tends
+In this project, we show that disparity in the rates of missing values tend
 to introduce bias in machine learning systems even if the training data is free
 from historical biases. We train Gaussian Naive Bayes classifiers on
 synthetic fair balanced dataset *(SFBD)* of 10000
-samples with 2 or more features. Results show that missing value disparity
-skews the model closer to one group than the other. We also experiment
-with real-world datasets COMPAS, FolkIncome, German, PIMA, and Heart. We observe 
+samples with 2 or more feature. Results show that missing value disparity
+skew the model closer to one group than the other. We also experiment
+with real-world datasets COMPAS, FolkIncome, German, PIMA and Heart. We observe 
 similar discriminating patterns. Missing value disparity induces bias 
 by changing the prediction probabilities. In cases where the change is too 
 low to alter the original prediction (obtained from baseline without any 
@@ -104,4 +104,8 @@ Please ignore **tensorflow** related warnings.
 
 ## Authors
 
-Anonymous Authors
+<p>
+Chowdhury Mohammad Rakin Haider, Chris Clifton<br>
+Purdue Univeristy<br>
+West Lafayette, IN<br>
+Emails: chaider@purdue.edu, clifton@cs.purdue.edu

@@ -4,3 +4,4 @@ wget
 scipy
 fancyimpute
 folktables
+tqdm
