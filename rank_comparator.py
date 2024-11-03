@@ -69,7 +69,6 @@ if __name__ == "__main__":
     else:
         keep_prot = args.keep_im_prot
 
-    estimator = get_estimator(args.estimator, args.reduce)
     keep_prot = args.reduce or (args.estimator == 'pr')
     n_samples = args.n_samples
     n_feature = args.n_feature
@@ -102,6 +101,8 @@ if __name__ == "__main__":
                 train_random_state=rs, test_random_state=TEST_SEED,
                 type=args.distype, n_samples=10000, n_features=n_feature,
                 test_method=test_method, **kwargs)
+
+            estimator = get_estimator(args.estimator, args.reduce, train_fd)
 
             df, _ = train_fd.convert_to_dataframe()
             logging.info(df.describe())

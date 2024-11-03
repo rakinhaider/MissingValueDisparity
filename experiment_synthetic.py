@@ -66,7 +66,6 @@ if __name__ == "__main__":
         'alpha': alpha, 'method': method, 'verbose': False,
         'priv_ic_prob': args.priv_ic_prob, 'unpriv_ic_prob': args.unpriv_ic_prob
     }
-    estimator = get_estimator(args.estimator, args.reduce)
     keep_prot = args.reduce or (args.estimator == 'pr')
     n_samples = args.n_samples
     n_feature = args.n_feature
@@ -87,6 +86,8 @@ if __name__ == "__main__":
             train_random_state=rs, test_random_state=41, type=args.distype,
             n_samples=n_samples, n_features=n_feature,
             test_method=test_method, **kwargs)
+
+        estimator = get_estimator(args.estimator, args.reduce, train_fd)
 
         pmod, p_perf = get_groupwise_performance(
             estimator, train_fd, test_fd, privileged=True)

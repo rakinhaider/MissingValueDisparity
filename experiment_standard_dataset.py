@@ -59,6 +59,8 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
                               method='baseline')
 
     keep_features = 'all'
+
+    estimator = get_estimator(args.estimator, False, train)
     mod, m_perf = get_groupwise_performance(
         estimator, train, test, privileged=None,
         keep_features=keep_features
@@ -67,9 +69,10 @@ def experiment(std_train, std_test, args, fold_id=None, **kwargs):
     keep_prot = kwargs['keep_prot']
     test_x, test_y = get_xy(test, keep_protected=keep_prot,
                             keep_features=keep_features)
-    proba = mod.predict_proba(test_x)
-    save_probas(args, proba, fold_id)
-    save_models(args, {mod: 'mod'}, fold_id)
+    if 'predict_proba' in mod.__dict__:
+        proba = mod.predict_proba(test_x)
+        save_probas(args, proba, fold_id)
+        save_models(args, {mod: 'mod'}, fold_id)
 
     return m_perf
 
@@ -83,8 +86,8 @@ if __name__ == "__main__":
     parser.add_argument('--unpriv-ic-prob', '-upic', default=0.4, type=float)
 
     parser.add_argument('--method', default='mean',
-                        choices=['baseline', 'drop', 'mean',
-                                 'mode', 'mice', 'missForest', 'knn', 'softimpute'])
+        choices=['baseline', 'drop', 'mean', 'mode', 'mice',
+                 'missForest', 'knn', 'softimpute'])
     parser.add_argument('--reduce', '-r', action='store_true', default=False)
     parser.add_argument('--calibrate', '-c', default=None,
                         choices=['sigmoid', 'isotonic'])
@@ -92,7 +95,8 @@ if __name__ == "__main__":
     parser.add_argument('--xvalid', '-x', default=False, action='store_true')
     parser.add_argument('--strategy', '-s', type=int, default=0)
     parser.add_argument('--estimator', '-e', default='cat_nb',
-                        choices=['cat_nb', 'nb', 'lr', 'svm', 'pr', 'nn', 'dt'])
+                        choices=['cat_nb', 'nb', 'lr', 'svm', 'pr',
+                                 'nn', 'dt', 'adv_debiasing', 'threshold_optimizer'])
     parser.add_argument('--header-only', default=False, action='store_true')
     parser.add_argument('--print-header', default=False, action='store_true')
 
@@ -102,7 +106,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.reduce = False
     method = METHOD_SHORT_TO_FULL[args.method]
-    estimator = get_estimator(args.estimator, False)
     keep_prot = args.reduce or (args.estimator == 'pr')
     cali_kwargs = {'calibrate': args.calibrate,
                    'calibrate_cv': args.calibrate_cv}

@@ -1,23 +1,31 @@
-import logging
-import argparse
-import numpy as np
-from datasets import (
-    DatasetFactory, PimaDataset, HeartDataset, FolkIncomeDataset
-)
-
-from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.naive_bayes import GaussianNB, CategoricalNB
-from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
-from sklearn.model_selection import KFold
-from sklearn.neural_network import MLPClassifier
-from aif360.metrics import ClassificationMetric
-from aif360.datasets import GermanDataset, BankDataset, AdultDataset, CompasDataset, BinaryLabelDataset
-from fairml import ExponentiatedGradientReduction, PrejudiceRemover
+import fairlearn.postprocessing
 from aif360.algorithms.preprocessing.optim_preproc_helpers.\
     data_preproc_functions import \
     load_preproc_data_compas, load_preproc_data_german, load_preproc_data_adult
+from aif360.datasets import(
+    GermanDataset, BankDataset, AdultDataset, CompasDataset, BinaryLabelDataset
+)
+from aif360.metrics import ClassificationMetric
+import argparse
+
+from fairlearn.postprocessing import ThresholdOptimizer
+
+from datasets import (
+    DatasetFactory, PimaDataset, HeartDataset, FolkIncomeDataset
+)
+from fairml import ExponentiatedGradientReduction, PrejudiceRemover
+from fairlearn.preprocessing import *
+from fairlearn.adversarial import AdversarialFairnessClassifier
+from fairlearn.reductions import *
+import logging
+import numpy as np
+from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold
+from sklearn.naive_bayes import GaussianNB, CategoricalNB
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 
 def get_parser():
@@ -36,31 +44,40 @@ def get_parser():
     parser.add_argument('--te-rs', default=41, type=int,
                         help='Test Random Seed')
     parser.add_argument('--estimator', default='nb',
-                        choices=['nb', 'lr', 'svm', 'dt', 'pr', 'cat_nb'],
+                        choices=['nb', 'lr', 'svm', 'dt', 'pr', 'cat_nb',
+                                 'adv_debiasing', 'threshold_optimizer'],
                         help='Type of estimator')
     parser.add_argument('--reduce', default=False, action='store_true')
     parser.add_argument('--print-header', default=False, action='store_true')
     return parser
 
 
-def get_estimator(estimator, reduce):
+def get_estimator(estimator_type_str, reduce, train_fd):
+    estimator_type = None
     if reduce:
-        return ExponentiatedGradientReduction
+        estimator_type = ExponentiatedGradientReduction
 
-    if estimator == 'nb':
-        return GaussianNB
-    if estimator == 'cat_nb':
-        return CategoricalNB
-    elif estimator == 'lr':
-        return LogisticRegression
-    elif estimator == 'svm':
-        return SVC
-    elif estimator == 'dt':
-        return DecisionTreeClassifier
-    elif estimator == 'nn':
-        return MLPClassifier
-    elif estimator == 'pr':
-        return PrejudiceRemover
+    if estimator_type_str == 'nb':
+        estimator_type = GaussianNB
+    if estimator_type_str == 'cat_nb':
+        estimator_type = CategoricalNB
+    elif estimator_type_str == 'lr':
+        estimator_type = LogisticRegression
+    elif estimator_type_str == 'svm':
+        estimator_type = SVC
+    elif estimator_type_str == 'dt':
+        estimator_type = DecisionTreeClassifier
+    elif estimator_type_str == 'nn':
+        estimator_type = MLPClassifier
+    elif estimator_type_str == 'pr':
+        estimator_type = PrejudiceRemover
+    elif estimator_type_str == 'adv_debiasing':
+        estimator_type = AdversarialFairnessClassifier
+    elif estimator_type_str == 'threshold_optimizer':
+        estimator_type = fairlearn.postprocessing.ThresholdOptimizer
+
+    params = get_model_params(estimator_type, train_fd)
+    return estimator_type(**params)
 
 
 def get_standard_dataset(dataset_name):
@@ -241,9 +258,33 @@ def get_model_params(model_type, train_fd):
         params = {'solver': 'lbfgs', 'alpha': 1e-5,
                   'hidden_layer_sizes': (5, 5, 2),
                   'random_state': 1}
+    elif model_type == AdversarialFairnessClassifier:
+        params = {
+            'predictor_model': [5, 5, 2],
+            'adversary_model': [5, 2], 'epochs': 10, 'progress_updates': 5
+        }
+    elif model_type == ThresholdOptimizer:
+        params = {
+            'estimator': LogisticRegression(),
+        }
     else:
         params = {}
     return params
+
+
+def get_fit_params(estimator, train_fd):
+    fit_params = {}
+    if isinstance(estimator, ThresholdOptimizer):
+        fit_params = {
+            'sensitive_features': train_fd.protected_attributes.squeeze()
+        }
+    return fit_params
+
+
+def get_pred_params(estimator, data_fd):
+    # Only necessary for threshold_optimizer.
+    # Created this function if some other estimator needs a different parameter.
+    return get_fit_params(estimator, data_fd)
 
 
 def get_predictions(model, test_fd, keep_prot=False, keep_features='all',
@@ -254,20 +295,21 @@ def get_predictions(model, test_fd, keep_prot=False, keep_features='all',
     return model.predict(test_fd_x)
 
 
-def train_model(model_type, x, y, params, calibrate=None, calibrate_cv=10):
-    model = model_type(**params)
+def train_model(model, x, y, fit_params, calibrate=None, calibrate_cv=10):
     if calibrate:
         model = CalibratedClassifierCV(model, method=calibrate, cv=calibrate_cv)
         logging.info(model)
-    model = model.fit(x, y)
+    model = model.fit(x, y, **fit_params)
     return model
 
 
 def get_classifier_metrics(clf, data, keep_prot=False, keep_features='all'):
     data_pred = data.copy()
+    pred_params = get_pred_params(clf, data)
+
     data_x, data_y = get_xy(data, keep_protected=keep_prot,
                             keep_features=keep_features)
-    data_pred.labels = clf.predict(data_x)
+    data_pred.labels = clf.predict(data_x, **pred_params)
     metrics = ClassificationMetric(
         data, data_pred, privileged_groups=data.privileged_groups,
         unprivileged_groups=data.unprivileged_groups)
@@ -323,13 +365,13 @@ def get_groupwise_performance(estimator, train_fd, test_fd=None,
         train_fd = get_samples_by_group(train_fd, privileged)
         test_fd = get_samples_by_group(test_fd, privileged)
     if not params:
-        params = get_model_params(estimator, train_fd)
+        fit_params = get_fit_params(estimator, train_fd)
 
-    keep_prot = (estimator == ExponentiatedGradientReduction)
-    keep_prot = keep_prot or (estimator == PrejudiceRemover)
+    keep_prot = isinstance(estimator, ExponentiatedGradientReduction)
+    keep_prot = keep_prot or isinstance(estimator, PrejudiceRemover)
 
     train_x, train_y = get_xy(train_fd, keep_prot, keep_features)
-    model = train_model(estimator, train_x, train_y, params, **kwargs)
+    model = train_model(estimator, train_x, train_y, fit_params, **kwargs)
     results = get_classifier_metrics(model, test_fd, keep_prot=keep_prot,
                                      keep_features=keep_features)
 
