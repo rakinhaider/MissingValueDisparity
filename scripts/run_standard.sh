@@ -8,7 +8,7 @@ file_name=${dir_name}/sota_cls_perf.tsv
 echo ${file_name}
 echo -n "" >${file_name}
 
-for estimator in nb svm lr dt nn pr ; do
+for estimator in nb svm lr dt nn pr adv_debiasing threshold_optimizer; do
   echo ${estimator}
   echo -n  "\multirow{6}{*}{${estimator}}" >>${file_name}
   for method in baseline drop mean mice knn softimpute; do

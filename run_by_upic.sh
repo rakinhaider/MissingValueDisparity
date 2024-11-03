@@ -8,17 +8,17 @@ logging='-ll DEBUG'
 
 if [ $1 == "syn" ]; then
 	fname=outputs/synthetic/vary_upic.tsv;
-	python -m experiment_synthetic --header-only >$fname;
+	python -m byupic.experiment_synthetic --header-only >$fname;
 	methods=('drop' 'mean' 'mice' 'knn' 'softimpute')
 	alpha=0.5
-	python -m experiment_synthetic\
+	python -m byupic.experiment_synthetic\
 		--alpha $alpha --distype corr\
 		--delta 10 -gs -3 -pic 0.0 -upic 0.0\
 		--method 'baseline' -tm none >>$fname;
 	for method in ${methods[@]}; do
 		for upic in 0.1 0.2 0.3 0.4 0.5 0.6; do
 			echo "upic" ${upic};
-			python -m experiment_synthetic\
+			python -m byupic.experiment_synthetic\
 			--alpha $alpha --distype corr\
 			--delta 10 -gs -3 -pic 0.1 -upic ${upic}\
 			--method ${method} -tm none >>$fname;
