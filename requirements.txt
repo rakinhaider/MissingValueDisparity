@@ -1,7 +1,8 @@
 numpy
-aif360[LawSchoolGPA, OptimPreproc, AdversarialDebiasing, Reductions]
+aif360[LawSchoolGPA, OptimPreproc, AdversarialDebiasing, Reductions, inFairness]
 wget
 scipy
 fancyimpute
 folktables
 tqdm
+torch

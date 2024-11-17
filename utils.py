@@ -1,7 +1,9 @@
+import torch
 import fairlearn.postprocessing
 from aif360.algorithms.preprocessing.optim_preproc_helpers.\
-    data_preproc_functions import \
+    data_preproc_functions import (
     load_preproc_data_compas, load_preproc_data_german, load_preproc_data_adult
+)
 from aif360.datasets import(
     GermanDataset, BankDataset, AdultDataset, CompasDataset, BinaryLabelDataset
 )
@@ -9,6 +11,7 @@ from aif360.metrics import ClassificationMetric
 import argparse
 
 from fairlearn.postprocessing import ThresholdOptimizer
+from fairlearn.preprocessing import CorrelationRemover
 
 from datasets import (
     DatasetFactory, PimaDataset, HeartDataset, FolkIncomeDataset
@@ -75,6 +78,8 @@ def get_estimator(estimator_type_str, reduce, train_fd):
         estimator_type = AdversarialFairnessClassifier
     elif estimator_type_str == 'threshold_optimizer':
         estimator_type = fairlearn.postprocessing.ThresholdOptimizer
+    elif estimator_type_str == 'corr_remover':
+        estimator_type = CorrelationRemover
 
     params = get_model_params(estimator_type, train_fd)
     return estimator_type(**params)
@@ -259,13 +264,33 @@ def get_model_params(model_type, train_fd):
                   'hidden_layer_sizes': (5, 5, 2),
                   'random_state': 1}
     elif model_type == AdversarialFairnessClassifier:
+        """
         params = {
-            'predictor_model': [5, 5, 2],
-            'adversary_model': [5, 2], 'epochs': 10, 'progress_updates': 5
+            'predictor_model': [5, 'relu', 5, 'relu', 2],
+            'adversary_model': [5, 'relu', 2],
+            'batch_size': 2**8, 'epochs': 10, 'progress_updates': 5,
+            'learning_rate': 0.0001, 'shuffle': True
+        }
+        """
+        torch.autograd.set_detect_anomaly(True)
+        params = {
+            'backend': "torch",
+            'predictor_model': [50, "leaky_relu", 50, "leaky_relu"],
+            'adversary_model': [3, "leaky_relu"],
+            'batch_size': 2 ** 8,
+            'progress_updates': 0.5,
+            'shuffle': True,
+            'learning_rate': 0.00001,
+            'random_state': 123,
         }
     elif model_type == ThresholdOptimizer:
         params = {
             'estimator': LogisticRegression(),
+        }
+    elif model_type == CorrelationRemover:
+        print(train_fd.protected_attribute_names)
+        params = {
+            'sensitive_feature_ids': train_fd.protected_attribute_names
         }
     else:
         params = {}
@@ -299,6 +324,7 @@ def train_model(model, x, y, fit_params, calibrate=None, calibrate_cv=10):
     if calibrate:
         model = CalibratedClassifierCV(model, method=calibrate, cv=calibrate_cv)
         logging.info(model)
+
     model = model.fit(x, y, **fit_params)
     return model
 

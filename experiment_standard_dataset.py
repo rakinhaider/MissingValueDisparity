@@ -96,7 +96,8 @@ if __name__ == "__main__":
     parser.add_argument('--strategy', '-s', type=int, default=0)
     parser.add_argument('--estimator', '-e', default='cat_nb',
                         choices=['cat_nb', 'nb', 'lr', 'svm', 'pr',
-                                 'nn', 'dt', 'adv_debiasing', 'threshold_optimizer'])
+                                 'nn', 'dt', 'adv_debiasing', 'threshold_optimizer',
+                                 'corr_remover'])
     parser.add_argument('--header-only', default=False, action='store_true')
     parser.add_argument('--print-header', default=False, action='store_true')
 
